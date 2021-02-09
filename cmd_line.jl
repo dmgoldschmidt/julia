@@ -81,7 +81,7 @@ function parse(s::Array{String} = ARGS)
       if item[2] == '-' # long style --option
         x = findall("=",item) # NOTE: item[3:end] returns "" if length == 2 
         if(length(x) > 0) # it's of the form --option=value
-          i = x[1][1] # item[i] = '='
+          i = x[1][1] # combined format option=value in one string
 #          println("i = $i")
           push!(c.option,item[3:i-1])
           push!(c.value,item[i+1:end])
