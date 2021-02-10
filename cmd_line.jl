@@ -35,6 +35,11 @@ alothough it might mean (but doesn't) that the option "f" has no associated valu
 value "file" has no associated option because both can legally appear as singletons. 
 It is up to the user to disambiguate these two cases.
 
+There is a convenience function get_val which finds the longest matching prefix to a requested string 
+in the command line options.  This allows the programmer to specify long options while the user only 
+needs to type a unique prefix.  For example, the programmer can ask for the value of the option "xaxis" 
+and the user can type -x3.4 (or -x 3.4, or
+--x 3.4 or --x=3.4) 
 """
 
  
@@ -120,15 +125,21 @@ end
 function get_val(option::String, s::Array{String} = ARGS) # get the value of option from the command line
   c = parse(s)
   i = 0
-  r = nothing
+  best_match = Int64[0,0]
   for opt in c.option
     i += 1
-    if opt == option
-      r = c.value[i]
-      break; #NOTE: if there is a duplicated option, the first one is chosen
+    m = match(Regex("^"*opt),option) # is opt a prefix of option? 
+    if m != nothing
+      if length(m.match) > best_match[1] #this is the longest match so far 
+        best_match[1] = length(m.match)
+        best_match[2] = i 
+      end
     end
   end
-  return r 
+  if best_match[1] != 0
+    return c.value[best_match[2]]
+  else return nothing
+  end
 end
 
     
