@@ -1,36 +1,59 @@
 # make a union of string,float for table type T
 
-mutable struct Table{T}
-  data::Array{Array{T}}
-  col::Array{Int64} # ordered subset of the column indices
-  row::Array{Int64} # permutation of the row indices
-  nrows::Int64
-  ncols::Int64
+struct TableRow{T}
+  data::Array{T}
+#  col::Array{Int64}
 end
 
-struct TableRow
-  t::Table
-  i::Int64 #permuted row index
+function Base.getindex(r::TableRow, j;Int64)
+  return r.data[j]
 end
 
-function Base.getindex(t::Table, Int64::i)
-  1 <= i <= t.nrows || throw(BoundsError(t,i))
-  return TableRow(t,t.row[i])
+struct Comp
+  cols::Array{Int64}
+  rev::Bool
 end
 
-function Base.getindex(r:TableRow, j:Int64)
-  1 <= j <= t.ncols || throw(BoundsError(r,i))
-  return t.data[r.i][j]
-end
-
-function Base.:<(r::TableRow, s::TableRow)
-  r.t == s.t || throw("Can't compare rows from different Tables")
-  for j in r.t.col # we have to do this in order!
-    if r.t.data[r.i][j] != s.t.data[r.i][j]
-      return r.t.data[r.i][j] < s.t.data[r.i][j]
+function (c::Comp)(r::TableRow, s::TableRow)
+  for j in c.cols # we have to do this in order!
+    if r.data[j] != s.data[j]
+      if(c.rev)
+        return r.data[j] > s.data[j]
+      else
+        return r.data[j] < s.data[j]
+      end
     end
   end
   return false
 end
 
   
+# function Base.:<(r::TableRow, s::TableRow)
+#   global sort_cols
+#   for j in sort_cols # we have to do this in order!
+#     if r.data[sort_cols[j]] != s.data[sort_cols[j]]
+#       return r.data[sort_cols[j]] < s.data[sort_cols[j]]
+#     end
+#   end
+#   return false
+# end
+
+function testTable()
+  sort_cols = Int64[1,2]
+  A = TableRow{Int64}[] # A Table is an Array of TableRow
+  push!(A,TableRow([1,3,3]))
+  push!(A,TableRow([1,4,4]))
+  push!(A,TableRow([1,2,2]))
+
+  println(A)
+  lt = Comp([1,2],false)
+  println(lt)
+  println("is A[1] < A[2]? ", lt(A[1], A[2]))
+  println("is A[1] < A[3]? ", lt(A[1], A[3]))
+  A[1],A[2] = A[2],A[1]
+  println("swapped: ",A)
+end
+  
+          
+
+

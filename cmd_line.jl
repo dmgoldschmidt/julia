@@ -44,11 +44,14 @@ and the user can type -x3.4 (or -x 3.4, or
 
  
 
-struct cmd_line
+struct CommandLine
   option::Array{String}
   value::Array{String}
 #  cmd_line(option,value) = new(String["b"],String["a"])
 end
+
+  
+  
 
 function isnumber(s)
   if tryparse(Int64,s) != nothing || tryparse(Float64,s) != nothing || tryparse(ComplexF64,s) != nothing
@@ -58,9 +61,9 @@ function isnumber(s)
   end
 end
 
-
-function parse(s::Array{String} = ARGS)
-  c = cmd_line([],[])
+#function (c::CommandLine)(s::Array{String} = ARGS)
+function command_line(s::Array{String} = ARGS)
+  c = CommandLine([],[])
   last_was_option::Bool = false
   item_no = 0
   if length(s) == 0; return c;end
@@ -122,39 +125,63 @@ function parse(s::Array{String} = ARGS)
   return c
 end
 
-function get_val(option::String, s::Array{String} = ARGS) # get the value of option from the command line
-  c = parse(s)
-  i = 0
-  best_match = Int64[0,0]
-  for opt in c.option
-    i += 1
-    m = match(Regex("^"*opt),option) # is opt a prefix of option? 
-    if m != nothing
-      if length(m.match) > best_match[1] #this is the longest match so far 
-        best_match[1] = length(m.match)
-        best_match[2] = i 
+function get_vals(defaults::Array{Array{Any,1},1}, c::CommandLine)
+#function get_val!(option::String, return_value::Array{String}, c::CommandLine, s::Array{String} = ARGS)
+  # get the value of option from the command line NOTE: return_value is a 1-element Array to enable call by reference
+  if length(c.option) == 0 && length(c.value) == 0
+    c = command_line(s)
+  end
+  for pair in defaults
+    i = 0
+    best_match = Int64[0,0]
+    for opt in c.option
+      i += 1
+      m = match(Regex("^"*opt),pair[1]) # is opt a prefix of pair[1]? 
+      if m != nothing
+        if length(m.match) > best_match[1] #this is the longest match so far 
+          best_match[1] = length(m.match)
+          best_match[2] = i 
+        end
+      end
+    end
+    if best_match[1] != 0
+      println("returning $(c.value[best_match[2]])")
+      if typeof(pair[2]) == String
+        pair[2] = c.value[best_match[2]]
+      elseif typeof(pair[2]) == Bool
+        pair[2] = true
+      else
+        value = tryparse(typeof(pair[2]),c.value[best_match[2]])
+        if value != nothing
+          pair[2] = value
+          # don't replace the value if we can't parse the string ( or if we didn't find the prefix given in pair[1]
+        end
       end
     end
   end
-  if best_match[1] != 0
-    return c.value[best_match[2]]
-  else return nothing
-  end
 end
 
-    
+# function test(x)
+#   println("type of x[]: ",typeof(x[]))
+#   x = Ref("reset")
+# end
 
-c = parse()
+# s = "set"
+# r = Ref(s)
+# test(r)
+# println("now s = ",r[])
+# exit(0)
+ c = command_line()
 println("options: ",c.option)
 println("values: ",c.value)
 println("\n")
-r = ""
-r = get_val(ARGS[1])
-if r != nothing
-  println("found $(ARGS[1]) = $r")
-else
-  println(ARGS[1]," not found")
-end
-
+r = 3.5
+s = 5
+t = "tee"  
+defaults = [["x",1.0],["v",false],["t",t]]
+println("defaults: ",defaults)
+get_vals(defaults,c)
+println("defaults are now: $defaults")
+println("r,s,t = $r,$s,$t")
 exit(0)
 
