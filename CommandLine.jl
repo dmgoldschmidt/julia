@@ -18,7 +18,7 @@ If the second field character is a letter, that character becomes the option
 name and the remainder of the field, if it is non-empty, becomes the value 
 associated to that option. 
  
-command_line returns an instance of the struct cmd_line below, consisting of two Array{String}
+command_line returns an instance of the struct CommandLine below, consisting of two Array{String}
 arrays of the same length.  This creates a pairing (option[i],value[i])
 meaning that option[i] has immediately preceded value[i] in the input s.
 However, if two options (resp. values) occur in sequence, the first option
@@ -26,8 +26,7 @@ However, if two options (resp. values) occur in sequence, the first option
 for the input, as the input array can have options and values in any order as long as the value associated
 with an option (if any) follows the option immediately.  The caller doesn't need to know anything about
 the order of the inputs and just receives a pair of String Arrays.  Or the caller can use the convenience
-function "get_val(option)" which returns the value associated to option, or "" if there is none, or it
-returns the nothing value if the requested option was not present.
+function "get_vals" (see below).
 
 However, there is an ambiguous parse, namely when, e.g., the
 parser encounters "-f file" it means that the option "f" has the value "file",
@@ -35,11 +34,13 @@ alothough it might mean (but doesn't) that the option "f" has no associated valu
 value "file" has no associated option because both can legally appear as singletons. 
 It is up to the user to disambiguate these two cases.
 
-There is a convenience function get_val which finds the longest matching prefix to a requested string 
-in the command line options.  This allows the programmer to specify long options while the user only 
-needs to type a unique prefix.  For example, the programmer can ask for the value of the option "xaxis" 
-and the user can type -x3.4 (or -x 3.4, or
---x 3.4 or --x=3.4) 
+There is a convenience function get_vals which accepts a Dict{String,Any} of default (option,value) pairs
+and for each option a)chooses the longest matching prefix on the command line, and b) replaces the default 
+value with the corresponding command line value.  If no match is found, the default value is left unchanged.
+If a match is found, but the corresponding value cannot be parsed, the default value is replaced by nothing.
+Thus the programmer can specify long options while the user only needs to type a unique prefix.  For example, 
+the programmer can ask for the value of the option "xaxis" and the user can type -x3.4 (or -x 3.4, or --x 3.4 
+or --xaxis=3.4) 
 """
 
  
@@ -144,7 +145,8 @@ function get_vals(defaults::Dict{String,Any}, c::CommandLine=CommandLine([],[]),
       end
     end
     if best_match[1] != 0
-      println("returning $(c.value[best_match[2]])")
+#      println("returning $(c.value[best_match[2]])")
+#      println("parsing for type $(typeof(defaults[option]))")
       if typeof(defaults[option]) == String
         defaults[option] = c.value[best_match[2]]
       elseif typeof(defaults[option]) == Bool
@@ -155,6 +157,7 @@ function get_vals(defaults::Dict{String,Any}, c::CommandLine=CommandLine([],[]),
       end
     end
   end
+  return c
 end
 
 
@@ -170,13 +173,12 @@ end
 # exit(0)
 function test_cmd_line()
 #  c = command_line()
-  # println("options: ",c.option)
-  # println("values: ",c.value)
-  # println("\n")
   defaults = Dict{String,Any}("int" => 1, "float" => 2.0, "file" => "none")
   println("defaults: ",defaults)
-  get_vals(defaults)
+  c = get_vals(defaults,CommandLine([],[]),["-f","--g","-h"])
+  println("options: ",c.option)
+  println("values: ",c.value)
+  println("\n")
   println("defaults are now: $defaults")
-  exit(0)
 end
 
