@@ -125,20 +125,21 @@ function command_line(s::Array{String} = ARGS)
   return c
 end
 
-function get_vals(defaults::Array{Array{Any,1},1}, c::CommandLine)
-#function get_val!(option::String, return_value::Array{String}, c::CommandLine, s::Array{String} = ARGS)
+function get_vals(defaults::Dict{String,Any}, c::CommandLine)
+  #function get_val!(option::String, return_value::Array{String}, c::CommandLine, s::Array{String} = ARGS)
   # get the value of option from the command line NOTE: return_value is a 1-element Array to enable call by reference
   if length(c.option) == 0 && length(c.value) == 0
     c = command_line(s)
   end
-  for pair in defaults
+  for option in keys(defaults)
     i = 0
     best_match = Int64[0,0]
     for opt in c.option
       i += 1
-      m = match(Regex("^"*opt),pair[1]) # is opt a prefix of pair[1]? 
+      m = match(Regex("^"*opt),option) # is opt a prefix of option? 
       if m != nothing
-        if length(m.match) > best_match[1] #this is the longest match so far 
+        if length(m.match) > best_match[1] #this is the longest match so far
+          println("matched $opt with $option, length $(length(m.match))")
           best_match[1] = length(m.match)
           best_match[2] = i 
         end
@@ -146,20 +147,18 @@ function get_vals(defaults::Array{Array{Any,1},1}, c::CommandLine)
     end
     if best_match[1] != 0
       println("returning $(c.value[best_match[2]])")
-      if typeof(pair[2]) == String
-        pair[2] = c.value[best_match[2]]
-      elseif typeof(pair[2]) == Bool
-        pair[2] = true
+      if typeof(defaults[option]) == String
+        defaults[option] = c.value[best_match[2]]
+      elseif typeof(defaults[option]) == Bool
+        Detaults[option] = true
       else
-        value = tryparse(typeof(pair[2]),c.value[best_match[2]])
-        if value != nothing
-          pair[2] = value
-          # don't replace the value if we can't parse the string ( or if we didn't find the prefix given in pair[1]
-        end
+        defaults[option] = tryparse(typeof(defaults[option]),c.value[best_match[2]])
+        # NOTE: value = nothing if we find a match to option but can't parse the string 
       end
     end
   end
 end
+
 
 # function test(x)
 #   println("type of x[]: ",typeof(x[]))
@@ -171,17 +170,15 @@ end
 # test(r)
 # println("now s = ",r[])
 # exit(0)
- c = command_line()
-println("options: ",c.option)
-println("values: ",c.value)
-println("\n")
-r = 3.5
-s = 5
-t = "tee"  
-defaults = [["x",1.0],["v",false],["t",t]]
-println("defaults: ",defaults)
-get_vals(defaults,c)
-println("defaults are now: $defaults")
-println("r,s,t = $r,$s,$t")
-exit(0)
+function test_cmd_line
+  c = command_line()
+  println("options: ",c.option)
+  println("values: ",c.value)
+  println("\n")
+  defaults = Dict{String,Any}("int" => 1, "float" => 2.0, "file" => "none")
+  println("defaults: ",defaults)
+  get_vals(defaults,c)
+  println("defaults are now: $defaults")
+  exit(0)
+end
 
