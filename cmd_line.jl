@@ -125,9 +125,7 @@ function command_line(s::Array{String} = ARGS)
   return c
 end
 
-function get_vals(defaults::Dict{String,Any}, c::CommandLine)
-  #function get_val!(option::String, return_value::Array{String}, c::CommandLine, s::Array{String} = ARGS)
-  # get the value of option from the command line NOTE: return_value is a 1-element Array to enable call by reference
+function get_vals(defaults::Dict{String,Any}, c::CommandLine=CommandLine([],[]),s::Array{String} = ARGS)
   if length(c.option) == 0 && length(c.value) == 0
     c = command_line(s)
   end
@@ -170,14 +168,14 @@ end
 # test(r)
 # println("now s = ",r[])
 # exit(0)
-function test_cmd_line
-  c = command_line()
-  println("options: ",c.option)
-  println("values: ",c.value)
-  println("\n")
+function test_cmd_line()
+#  c = command_line()
+  # println("options: ",c.option)
+  # println("values: ",c.value)
+  # println("\n")
   defaults = Dict{String,Any}("int" => 1, "float" => 2.0, "file" => "none")
   println("defaults: ",defaults)
-  get_vals(defaults,c)
+  get_vals(defaults)
   println("defaults are now: $defaults")
   exit(0)
 end
