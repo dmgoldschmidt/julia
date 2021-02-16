@@ -1,31 +1,36 @@
 # make a union of string,float for table type T
 
-struct TableRow{T}
-  data::Array{T}
-#  col::Array{Int64}
+# struct TableRow{T}
+#   data::Array{T}
+# end
+
+struct Table{T}
+  data::Array{Array{T}} 
+  sort_keys::Tuple{Int64}
 end
 
-function Base.getindex(r::TableRow, j;Int64)
-  return r.data[j]
+function Base.getindex(t::Table, i::Int64)
+  return t.data[i]
 end
 
-struct Comp
-  cols::Array{Int64}
-  rev::Bool
-end
+# struct Comp{T} #this is a functor (function object).  Initialize with a Tuple of col. indices and a rev::Bool 
+#   # rev = true for descending sort.  Rows will be sorted on the given column indices 
+#   sort_keys::Tuple{Int64}
+#   rev::Bool
+# end
 
-function (c::Comp)(r::TableRow, s::TableRow)
-  for j in c.cols # we have to do this in order!
-    if r.data[j] != s.data[j]
-      if(c.rev)
-        return r.data[j] > s.data[j]
-      else
-        return r.data[j] < s.data[j]
-      end
-    end
-  end
-  return false
-end
+# function (c::TableRow{})(r::TableRow{T}, s::TableRow{T})
+#   for j in c.sort_keys # we have to do this in order!
+#     if r.data[j] != s.data[j]
+#       if(c.rev)
+#         return r.data[j] > s.data[j]
+#       else
+#         return r.data[j] < s.data[j]
+#       end
+#     end
+#   end
+#   return false
+# end
 
   
 # function Base.:<(r::TableRow, s::TableRow)
