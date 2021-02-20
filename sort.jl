@@ -43,12 +43,12 @@ function (c::StdComp)(x,y)
   return c.rev ? x <  y : x > y
 end
 
-
+const ArrayType = Union{Array,VarArray}
 function std_swap(A,i,j)
   A[i],A[j] = A[j],A[i]
 end
 
-function heap(A::Array, n::Int64, max_n::Int64, comp = StdComp(true), swap = std_swap)
+function heap(A::ArrayType, n::Int64, max_n::Int64, comp = StdComp(true), swap = std_swap)
   #the children of A[n] are heaps.  Make A[n] a heap
   #println("n = $n")
   while 2*n <= max_n
@@ -68,7 +68,7 @@ function heap(A::Array, n::Int64, max_n::Int64, comp = StdComp(true), swap = std
   end
 end
 
-function heapsort(A::Array, n::Int64 = length(A), comp = StdComp(true), swap = std_swap)
+function heapsort(A::ArrayType, n::Int64 = length(A), comp = StdComp(true), swap = std_swap)
   for i = trunc(Int64,n/2):-1:1
     heap(A,i,n,comp,swap)
 #    #println(A[1:n])
@@ -82,7 +82,7 @@ function heapsort(A::Array, n::Int64 = length(A), comp = StdComp(true), swap = s
   end
 end
 
-function search(x, A::Array, lower::Int64 = 1, upper::Int64 = length(A))
+function search(x, A::ArrayType, lower::Int64 = 1, upper::Int64 = length(A))
   if x > A[upper] || A[lower] >= A[upper]; return (upper, A[upper]);end
   if x <= A[lower]; return (lower,A[lower]);end
   while lower < upper-1 # this loop mains the relation A[lower] < x <= A[upper]
