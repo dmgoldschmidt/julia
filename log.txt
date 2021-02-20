@@ -1,0 +1,19 @@
+Fri 19 Feb 2021 04:22:24 PM PST
+I've been learning julia for the past two or three weeks.  So far, I have a working sort.jl, CommandLine.jl,
+VarArray.jl, and fts_flowsets.jl:
+
+sort.jl: similar to Heap.h but it implements a TableComp functor which does lexicographic ordering in tables( which
+are of type Array[][].
+
+CommandLine.jl is similar to the C++ version, but its convenience function getvals inputs a julia Dict defaults,
+then parses an input CommandLine (which is an Array::strings) and uses it to modify the defaults.
+
+VarArray.jl automatically extends the length of a VarArray up to a specified maximum.  Right now, the maximum
+is 10 times the starting length, but this could be changed to a user-specified value.
+
+fts_flowsets.jl reads a raw wsa file in either text or .gz format and outputs a table of feature vectors, consisting
+of four pseudo-median values for IAT, DUR, BYTES_IN and BYTES_OUT, as well as the connection ident, the threat level,
+and the no. of records found for the given connection.  This code ran successfully on a full day (07-01) of wsa data,
+producing over 2 million fts feature vectors, with 249,298 consisting of at least 10 records.
+ 
+
