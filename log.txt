@@ -15,5 +15,13 @@ fts_flowsets.jl reads a raw wsa file in either text or .gz format and outputs a 
 of four pseudo-median values for IAT, DUR, BYTES_IN and BYTES_OUT, as well as the connection ident, the threat level,
 and the no. of records found for the given connection.  This code ran successfully on a full day (07-01) of wsa data,
 producing over 2 million fts feature vectors, with 249,298 consisting of at least 10 records.
- 
+
+Sat 20 Feb 2021 11:48:10 AM PST
+It took me two hours this morning to figure out how to convert the Array that is returned from "split" to a Tuple,
+which will supposedly improve performance.  Obvious things, like " row = tuple(split(line,"|")) " don't work. It
+turns out that you need  " row = tuple(split(line,"|")...) " which seems ridiculous.  I also tried logical things
+like "row = tuple(split(line,"|")[1:end]) " and probably twenty others.  Coping with the sometimes bizarre syntax
+together with the shitty error messages is quite a challenge.
+
+
 

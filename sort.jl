@@ -26,7 +26,7 @@ struct TableComp #this is a functor (function object).  It is designed for sorti
   sort_keys::Array{Int64,1}
 end
 
-function (c::TableComp)(r::Array, s::Array)
+function (c::TableComp)(r::Tuple, s::Tuple)
   for j in c.sort_keys # we have to do this in order!
     if r[j] != s[j]
       return c.rev ? r[j] < s[j] : r[j] > s[j]

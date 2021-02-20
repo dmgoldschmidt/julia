@@ -6,7 +6,7 @@ include("sort.jl")
 
 StreamType = Union{IOStream,Base.TTY}
 
-function is_dotted_quad(s::String)
+function is_dotted_quad(s::StringType)
   fields = split(s,".")
   if length(fields) != 4; return false; end
   for field in fields
@@ -57,25 +57,27 @@ end
 
 
 function main(cmd_line = ARGS)    
-  defaults = Dict{String,Any}("max_recs" => 0,"timeout"=>300,"va_length"=> 10,"in_file"=>"wsa.sample","out_file"=>"none")
-  cl = get_vals(defaults,cmd_line)
+  defaults = Dict{String,Any}("max_recs" => 0,"timeout"=>300,"va_length"=> 10,"min_recs"=>10,"in_file"=>"wsa.sample",
+                              "out_file"=>"none")
+  cl = get_vals(defaults,cmd_line) # replace defaults with command line values
   println("parameters: $defaults")
-  max_recs = defaults["max_recs"]
-  timeout = defaults["timeout"]
-  va_length = defaults["va_length"]
-  in_file = defaults["in_file"]
-  out_file = defaults["out_file"]
+  max_recs = defaults["max_recs"] # max no of records to read
+  min_recs = defaults["min_recs"] # min no of records in a flowset
+  timeout = defaults["timeout"] # no. of seconds to collect records
+  va_length = defaults["va_length"] # initial length for VarArray (max. length is now 10x)
+  in_file = defaults["in_file"] # raw wsa file to read
+  out_file = defaults["out_file"] # feature vector output
 
   stream = occursin(".gz",in_file) ? GZip.open(in_file) : open(in_file)
 
   nrecs = 0;nlines = 0
-  data = Array{String}[]
+  data = Tuple[]
   readline(stream);readline(stream) #skip header
   for line in eachline(stream)
 #    global nrecs,nlines,max_recs
     nrecs += 1
-    row = split(line,"|")
-    if !is_dotted_quad(string(row[4])) || !is_dotted_quad(string(row[6])); continue; end
+    row = tuple(split(line,"|")...)
+    if !is_dotted_quad(row[4]) || !is_dotted_quad(row[6]); continue; end
     push!(data, row)
     nlines += 1
     if(nlines <= 4); println(row);end
@@ -101,8 +103,8 @@ function main(cmd_line = ARGS)
     nf = i == 1 ? true : comp(data[i-1],data[i]) #NOTE: comp returns false on equality
     new_flowset = (i == 1 || nf)
     if new_flowset
-      if i > 1
-        save_feature_vector(fl,stream) # process current flowset
+      if i > 1 && fl.nrecs >= min_recs
+        save_feature_vector(fl,stream) # process current flowset or skip it if too small
         nfeatures += 1
         end
       fl.ident = data[i][4]*"|"*data[i][6]*"|"*data[i][12]
@@ -111,7 +113,7 @@ function main(cmd_line = ARGS)
       fl.start_time = time
       prev_time = time
     end
-      #process the record
+      #add the record to the current flowset
     if time - fl.start_time < timeout # if not, ignore the remaning records in this flowset
       fl.nrecs += 1
       fl.iat[fl.nrecs] = time - prev_time
@@ -121,26 +123,15 @@ function main(cmd_line = ARGS)
       fl.threat = tryparse(Float64,data[i][15])
       prev_time = time
     end
-    if i == length(data)
+    if i == length(data) && fl.nrecs >= min_recs
       save_feature_vector(fl,stream) # process the last flowset
       nfeatures += 1
     end
   end # on to the next data record
-  close(stream)
-  println("largest flowset was $(length(fl.iat)), there were $nfeatures feature vectors")
+#  close(stream)
+  println(stdout,"largest flowset was $(length(fl.iat)), there were $nfeatures feature vectors")
 end # of main
 
-# if out_file == "none"
-#   stream = stdout
-# else
-#   stream = open(out_file,"w")
-# end
-# for record in data
-#   for field in record
-#     write(stream,field*" ")
-#   end
-#   write(stream,"\n")
-# end
-
+if ARGS != []; main(ARGS); end
 
  
