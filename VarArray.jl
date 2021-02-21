@@ -1,3 +1,4 @@
+#NOTE: sizehint!(A,n) may be a good idea
 struct VarArray{T}
   A::Array{T}
   null::T

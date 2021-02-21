@@ -44,6 +44,37 @@ function (c::StdComp)(x,y)
   return c.rev ? x <  y : x > y
 end
 
+mutable struct IndexPair{T} #NOTE: this might have been done with a Tuple, except that we need mutability of values
+  index::Int64
+  value::T
+end
+
+function Base.print(ip::IndexPair)
+  print(ip.value)
+end
+
+
+# function (c::IndexPair) Base.:<(x::IndexPair,y::IndexPair)::Bool
+#   return x.value < y.value
+# end
+
+struct PairComp
+  rev::Bool
+  ind::Int64
+end
+
+PairComp(i::Int64) = PairComp(true,i)
+
+function (p::PairComp)(x::IndexPair{Float64}, y::IndexPair{Float64})
+  if p.ind == 1
+    return p.rev ? x.index < y.index : x.index > y.index
+  else
+    return p.rev ? x.value < y.value : x.value > y.value
+  end
+end
+
+
+
 function std_swap(A,i,j)
   A[i],A[j] = A[j],A[i]
 end

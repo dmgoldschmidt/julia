@@ -24,4 +24,17 @@ like "row = tuple(split(line,"|")[1:end]) " and probably twenty others.  Coping 
 together with the shitty error messages is quite a challenge.
 
 
-
+Sat 20 Feb 2021 05:15:26 PM PST
+Working now on features2cdf.jl.  The plan:
+1. read the feature file into a big table
+2. create a col = IndexPair[]
+3. for each cdf-able column in the table:
+   a. push an IndexPair for each entry into col (the first time -- after that, the space in col already exists)
+   b. sort col
+   c. for i in 1:n = length(col); replace table[j][col[i].index] with i/n
+4. write the table back out
+   
+Sun 21 Feb 2021 08:27:25 AM PST
+Notes for sort:
+1. Change TableComp to LexOrder (more descriptive)
+2. Change all comparison functors to return -1,0,or 1 depending on >,=,<
