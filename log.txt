@@ -38,3 +38,18 @@ Sun 21 Feb 2021 08:27:25 AM PST
 Notes for sort:
 1. Change TableComp to LexOrder (more descriptive)
 2. Change all comparison functors to return -1,0,or 1 depending on >,=,<
+
+Sun 21 Feb 2021 05:10:39 PM PST
+So if A = Matrix(m,n) then A[:,j] is a column vector consisting of the jth column of A.  BUT
+if we change A[:,j] by, say, sorting it, this doesn't necessarily change A.  so e.g. the code
+
+A = Matrix(m,n)
+heapsort(A[:,1])
+
+doesn't change A.  Instead, we need
+A = Matrix(m,n)
+v = A[:,1]
+heapsort(v)
+A[:1] = v
+
+which is of course ridiculous, but there you are.

@@ -1,3 +1,5 @@
+#! /home/david/julia-1.5.3/bin/julia
+
 """
 This is a heap/sort combo which will sort an Array{T} of any type T.  In general, the user must provide a swap
 function to interchange two Array entries and a comparator function (object) to compare two entries.  The defaults 
@@ -58,7 +60,7 @@ end
 #   return x.value < y.value
 # end
 
-struct PairComp
+mutable struct PairComp
   rev::Bool
   ind::Int64
 end
@@ -66,6 +68,7 @@ end
 PairComp(i::Int64) = PairComp(true,i)
 
 function (p::PairComp)(x::IndexPair{Float64}, y::IndexPair{Float64})
+#  println("comparing ", string(x), string(y))
   if p.ind == 1
     return p.rev ? x.index < y.index : x.index > y.index
   else
@@ -73,6 +76,10 @@ function (p::PairComp)(x::IndexPair{Float64}, y::IndexPair{Float64})
   end
 end
 
+function Base.string(ip::IndexPair)
+  v = round(ip.value,digits = 6)
+  return "($(ip.index), $v)"
+end
 
 
 function std_swap(A,i,j)
@@ -84,14 +91,12 @@ function heap(A, n::Int64, max_n::Int64, comp = StdComp(true), swap = std_swap)
   #println("n = $n")
   while 2*n <= max_n
     m = 2*n;
-    if 2*n+1 <= max_n && comp(A[m],A[2*n+1])
+    if 2*n+1 <= max_n && comp(A[m],A[m+1])
       m += 1
     end
-#    #println("m = $m")
-    #println("is ",A[n]," < ",A[m], A[n] < A[m]);
     if comp(A[n],A[m])
-      swap(A,n,m) #now A[n] >= max(A[2*n],A[2*n+1] (with rev = false)
-      #println("swapping $n, $m")
+#      println("swapping items $n, $m")
+      swap(A,n,m) # now A[n] > max(A[2*n],A[2*n+1]) (with ascending sort order)
     else
       break;
     end
@@ -102,11 +107,10 @@ end
 function heapsort(A, n::Int64 = length(A), comp = StdComp(true), swap = std_swap)
   for i = trunc(Int64,n/2):-1:1
     heap(A,i,n,comp,swap)
-#    #println(A[1:n])
   end
-#  #println("heap complete")
   while n > 1
-    swap(A,1,n)
+#    println("swapping items A[1] = ",string(A[1]), "A[$n] = ",string(A[n]))
+    swap(A,1,n) #biggest remaining guy goes to the end
     n -= 1
     heap(A,1,n,comp,swap)
 #    #println(A[1:n])
@@ -126,27 +130,37 @@ function search(x, A, lower::Int64 = 1, upper::Int64 = length(A))
 end
 
 # using Random
-# Random.seed!(12345)
-# A = Vector{Int64}[]
-# row = Array{Int64,1}(undef,4)
-# for i in 1:8
-#   push!(A,rand(1:8,4))
+# include("CommandLine.jl")
+# function main(cmd_line = ARGS)
+#   defaults = Dict{String,Any}("nrows"=>5,"ncols"=>2, "seed"=>12345)
+#   cl = get_vals(defaults,cmd_line) # replace defaults with command line values
+#   println("parameters: $defaults")
+#   nrows = defaults["nrows"]
+#   ncols = defaults["ncols"]
+#   seed = defaults["seed"]
+#   Random.seed!(seed)
+#   A = Matrix{IndexPair{Float64}}(undef,nrows,ncols)
+#   for i in 1:nrows
+#     for j in 1:ncols
+#       A[i,j] = IndexPair(i,rand())
+#     end
+#   end
+#   comp = PairComp(true,2)
+#   println("input:",A)
+#   for j in 1:ncols
+#     v = A[:,j]
+#     heapsort(v,5,PairComp(2))
+#     A[:,j] = v
+#     println("after 1st sort: ",A)
+#     heapsort(v,5,PairComp(1))
+#     A[:,j] = v
+#     println("after 2nd sort: ",A)
+#   end
 # end
-# comp = TableComp(true,[1,2])
-# println("input:")
-# for i in 1:length(A)
-#   println(i,":",A[i])
-# end
-# heapsort(A,8,comp)
-# for i in 1:length(A)
-#   println(i,":",A[i])
-# end
-# c = TableComp(false,[3,1])
-# heapsort(A,8,c)
-# println("descending order:")
-# for i in 1:length(A)
-#   println(i,":",A[i])
-# end
+# if ARGS != []
+#   println("ARGS = ",ARGS)
+#   main(ARGS)
+# end # to execute directly from command line: ./features2cdf.jl (at least one option or value)
 
 
 

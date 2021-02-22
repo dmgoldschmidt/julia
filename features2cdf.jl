@@ -56,7 +56,7 @@ function main(cmd_line = ARGS)
     row = split(line)
     push!(data,row)
     if(nrecs <= 4); println(row);end
-    if (max_recs != 0 ? nrecs > max_recs : false); break; end #early exit?
+    if (max_recs != 0 ? nrecs >= max_recs : false); break; end #early exit?
   end
   close(stream)
   println("\nfound $nrecs records")
@@ -74,9 +74,15 @@ function main(cmd_line = ARGS)
   #  x = collect(1:nrecs)./Float64(nrecs)
   nrecs0 = Float64(nrecs)
   for j in 1:4
-    heapsort(cdfs[:,j],nrecs,PairComp(2)) # ascending sort on value
-    for i in 1:nrecs;cdfs[i,j].value = i/nrecs0; end
-    heapsort(cdfs[:,j],nrecs,PairComp(1)) # restore original order
+#    println("before 1st sort: $(cdfs[:,j])")
+    v = cdfs[:,j]
+    heapsort(v,nrecs,PairComp(2)) # ascending sort on value
+    cdfs[:,j] = v # for some reason, this work around seems to be necessary.
+#    println("after 1st sort: $(cdfs[:,j])")
+    for i in 1:nrecs;v[i].value = i/nrecs0; end
+    heapsort(v,nrecs,PairComp(1)) # restore original order
+    cdfs[:,j] = v
+#    println("after 2nd sort: $(cdfs[:,j])")
   end
   stream = open(out_file,"w")
   for i in 1:nrecs
