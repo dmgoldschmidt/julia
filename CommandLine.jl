@@ -42,8 +42,7 @@ Thus the programmer can specify long options while the user only needs to type a
 the programmer can ask for the value of the option "xaxis" and the user can type -x3.4 (or -x 3.4, or --x 3.4 
 or --xaxis=3.4) 
 """
-
- 
+CommandLine_loaded = true
 
 struct CommandLine
   option::Array{String}

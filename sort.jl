@@ -5,12 +5,12 @@ This is a heap/sort combo which will sort an Array{T} of any type T.  In general
 function to interchange two Array entries and a comparator function (object) to compare two entries.  The defaults 
 are std_swap and StdComp(true), which is a functor (function object).  In the default (true) mode, heap returns
 a top-down heap, and sort returns a bottom-up (ascending) sort.  These are both reversed if you call with
-StdComp(false):  heap(A,n,StdComp(false)).  There is also a TableComp comparator for the rows of a table Array{Array{T}}
+StdComp(false):  heap(A,n,StdComp(false)).  There is also a LexComp comparator for the rows of a table Array{Array{T}}
 which implements lexicographic ordering. It assumes that type T has a "<" operator defined.  To use this, one first 
 initializes the object with an Array{Int64} of sort keys, i.e. column indices to use in the lexicographic ordering.
 Example: ascending lexicographic sort on columns 1,3,4
 
-comp = TableComp(true,[1,3,4])
+comp = LexComp(true,[1,3,4])
 A = Array{Array{T}}
 .
 . (fill the table with n rows)
@@ -21,15 +21,16 @@ If type T does not have a < operator defined, a custom comparator will need to b
 operator< for type T.
 
 """
+sort_loaded = true
 #const ArrayType = Any #Union{Tuple,Array,VarArray}
-
-struct TableComp #this is a functor (function object).  It is designed for sorting an Array{Array{T}}.
+import Random
+struct LexComp #this is a functor (function object).  It is designed for sorting an Array{Array{T}} in lexicographic order
   #Initialize with a Tuple of col. indices and a rev::Bool 
   rev::Bool
   sort_keys::Array{Int64,1}
 end
 
-function (c::TableComp)(r, s)
+function (c::LexComp)(r, s)
   for j in c.sort_keys # we have to do this in order!
     if r[j] != s[j]
       return c.rev ? r[j] < s[j] : r[j] > s[j]
@@ -129,38 +130,48 @@ function search(x, A, lower::Int64 = 1, upper::Int64 = length(A))
   return (upper, upper - (upper-x)/(upper-lower))
 end
 
-# using Random
-# include("CommandLine.jl")
-# function main(cmd_line = ARGS)
-#   defaults = Dict{String,Any}("nrows"=>5,"ncols"=>2, "seed"=>12345)
-#   cl = get_vals(defaults,cmd_line) # replace defaults with command line values
-#   println("parameters: $defaults")
-#   nrows = defaults["nrows"]
-#   ncols = defaults["ncols"]
-#   seed = defaults["seed"]
-#   Random.seed!(seed)
-#   A = Matrix{IndexPair{Float64}}(undef,nrows,ncols)
-#   for i in 1:nrows
-#     for j in 1:ncols
-#       A[i,j] = IndexPair(i,rand())
-#     end
-#   end
-#   comp = PairComp(true,2)
-#   println("input:",A)
-#   for j in 1:ncols
-#     v = A[:,j]
-#     heapsort(v,5,PairComp(2))
-#     A[:,j] = v
-#     println("after 1st sort: ",A)
-#     heapsort(v,5,PairComp(1))
-#     A[:,j] = v
-#     println("after 2nd sort: ",A)
-#   end
-# end
-# if ARGS != []
-#   println("ARGS = ",ARGS)
-#   main(ARGS)
-# end # to execute directly from command line: ./features2cdf.jl (at least one option or value)
+function main(cmd_line = ARGS)
+  defaults = Dict{String,Any}("nrows"=>5,"ncols"=>2, "seed"=>12345)
+  cl = get_vals(defaults,cmd_line) # replace defaults with command line values
+  println("parameters: $defaults")
+  nrows = defaults["nrows"]
+  ncols = defaults["ncols"]
+  seed = defaults["seed"]
+  Random.seed!(seed)
+  A = Matrix{IndexPair{Float64}}(undef,nrows,ncols)
+  for i in 1:nrows
+    for j in 1:ncols
+      A[i,j] = IndexPair(i,rand())
+    end
+  end
+  comp = PairComp(true,2)
+  println("input:",A)
+  for j in 1:ncols
+    v = A[:,j]
+    heapsort(v,5,PairComp(2))
+    A[:,j] = v
+    println("after 1st sort: ",A)
+    heapsort(v,5,PairComp(1))
+    A[:,j] = v
+    println("after 2nd sort: ",A)
+  end
+end
+
+# execute main iff
+# a) it's being run from a file containing the string "sort.jl", or
+# b) it's being run from the REPL
+if occursin("sort.jl",PROGRAM_FILE)
+  include("CommandLine.jl")
+  main(ARGS)
+else
+  if isinteractive()
+    include("CommandLine.jl")
+    print("enter command line: ")
+    cmd = readline()
+    main(map(string,split(cmd)))
+  end
+end # to execute directly from command line: ./features2cdf.jl <ARGS>
+
 
 
 

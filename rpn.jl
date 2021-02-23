@@ -67,6 +67,3 @@ while entry != "quit"
   end
   println(stack[top])
 end
-  
-
-

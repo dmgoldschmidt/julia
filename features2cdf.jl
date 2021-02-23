@@ -1,40 +1,14 @@
 #! /home/david/julia-1.5.3/bin/julia
 import GZip
-include("VarArray.jl")
-include("CommandLine.jl")
-include("sort.jl")
-
-StreamType = Union{IOStream,Base.TTY}
-
-function is_dotted_quad(s::StringType)
-  fields = split(s,".")
-  if length(fields) != 4; return false; end
-  for field in fields
-    n = tryparse(Int64,field)
-    if n == nothing; return false; end
-    if n < 1 || n > 255; return false; end
-  end
-  return true
+if !@isdefined(CommandLine_loaded)
+  include("CommandLine.jl")
 end
-
-# struct IndexPair{T}
-#   index::Int64
-#   value::T
-# end
-
-# function (c::IndexPair) Base.:<(x::IndexPair,y::IndexPair)::Bool
-#   return x.value < y.value
-# end
-
-# struct PairComp
-#   rev::Bool
-# end
-
-# function (p:PairComp)(x,y)::Bool
-#   return p.rev ? x < y : x > y
-# end
-
-
+if !@isdefined(sort_loaded)
+  include("sort.jl")
+end
+if !@isdefined(util_loaded)
+  include("util.jl")
+end
 
 function main(cmd_line = ARGS)    
   defaults = Dict{String,Any}("max_recs" => 0,"va_length"=> 10,"min_recs"=>10,"in_file"=>"wsa.features.txt",

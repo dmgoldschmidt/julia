@@ -1,8 +1,15 @@
 #! /home/david/julia-1.5.3/bin/julia
 import GZip
-include("VarArray.jl")
-include("CommandLine.jl")
-include("sort.jl")
+if !@isdefined(CommandLine_loaded)
+  include("CommandLine.jl")
+end
+if !@isdefined(sort_loaded)
+  include("sort.jl")
+end
+if !@isdefined(util_loaded)
+  include("util.jl")
+end
+
 
 StreamType = Union{IOStream,Base.TTY}
 
@@ -22,13 +29,14 @@ mutable struct Flowset
   nrecs::Int64
   threat::Float64
   start_time::Float64
+  fqdn::String
   iat::VarArray{Float64}
   dur::VarArray{Float64}
   bytes_in::VarArray{Float64}
   bytes_out::VarArray{Float64}
 end
 vtype = VarArray{Float64}
-Flowset(length) = Flowset("",0,0.0,0.0,vtype([],0,length),vtype([],0,length),vtype([],0,length),vtype([],0,length))
+Flowset(length) = Flowset("",0,0.0,0.0,"",vtype([],0,length),vtype([],0,length),vtype([],0,length),vtype([],0,length))
 
 function print(fl::Flowset, stream::StreamType = stdout)
   println(stream,"Flowset $(fl.ident) : start: $(fl.start_time) nrecs: $(fl.nrecs) threat: $(fl.threat)\n")
@@ -51,10 +59,11 @@ function save_feature_vector(fl::Flowset, stream::StreamType = stdout,  n::Int64
   dur = get_med(fl.dur,fl.nrecs,n)
   in_bytes = get_med(fl.bytes_in,fl.nrecs,n)
   out_bytes = get_med(fl.bytes_out,fl.nrecs,n)
-  println(stream,fl.ident," $iat $dur $in_bytes $out_bytes $(fl.threat) $(fl.nrecs)")
+  fields = map(string,split(fl.fqdn,"."))
+  sldn = length(fields) >= 2 ? fields[end-1]*"."*fields[end] : "(missing)"
+  println(stream,fl.ident," $iat $dur $in_bytes $out_bytes $sldn $(fl.threat) $(fl.nrecs)")
   return (iat,dur,in_bytes,out_bytes) 
 end
-
 
 function main(cmd_line = ARGS)    
   defaults = Dict{String,Any}("max_recs" => 0,"timeout"=>300,"va_length"=> 10,"min_recs"=>10,"in_file"=>"wsa.sample",
@@ -68,8 +77,7 @@ function main(cmd_line = ARGS)
   in_file = defaults["in_file"] # raw wsa file to read
   out_file = defaults["out_file"] # feature vector output
 
-  stream = occursin(".gz",in_file) ? GZip.open(in_file) : open(in_file)
-
+  stream = tryopen(in_file)
   nrecs = 0;nlines = 0
   data = Tuple[]
   readline(stream);readline(stream) #skip header
@@ -85,10 +93,10 @@ function main(cmd_line = ARGS)
   end
   close(stream)
   println("\nfound $nlines records")
-  comp = TableComp(true,[4,6,12,1]) #sort on ident,time
+  comp = LexComp(true,[4,6,12,1]) #sort on ident,time
   heapsort(data,nlines,comp)
 
-  comp = TableComp(true,[4,6,12])
+  comp = LexComp(true,[4,6,12])
   fl = Flowset(va_length)
   if out_file == "none"
     stream = stdout
@@ -110,6 +118,7 @@ function main(cmd_line = ARGS)
       fl.ident = data[i][4]*"|"*data[i][6]*"|"*data[i][12]
       fl.nrecs = 0
       fl.threat = tryparse(Float64,data[i][15])
+      fl.fqdn = data[i][8]
       fl.start_time = time
       prev_time = time
     end
@@ -120,7 +129,6 @@ function main(cmd_line = ARGS)
       fl.dur[fl.nrecs] = tryparse(Float64,data[i][10])
       fl.bytes_in[fl.nrecs] = tryparse(Float64,data[i][13])
       fl.bytes_out[fl.nrecs] = tryparse(Float64,data[i][14])
-      fl.threat = tryparse(Float64,data[i][15])
       prev_time = time
     end
     if i == length(data) && fl.nrecs >= min_recs
