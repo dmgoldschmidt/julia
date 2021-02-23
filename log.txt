@@ -53,3 +53,29 @@ heapsort(v)
 A[:1] = v
 
 which is of course ridiculous, but there you are.
+
+Tue 23 Feb 2021 03:29:43 PM PST
+Here are my comments for the latest commit:
+util.jl:
+initial commit.  Moved VarArray here and deleted VarArray.jl.  Moved is_dotted_quad and tryopen as well
+
+fts_flowsets.jl:
+implemented @isdefined for sort.jl, util.jl, CommandLine.jl,
+added fqdn to struct Flowset
+added sldn or "(missing)" to output
+now using tryopen for opening files
+
+sort.jl:
+changed "TableComp" to "LexComp"
+implemented @isdefined
+
+features2cdf:
+implemented @isdefined, and moved is_dotted_quad to util.jl
+
+clusters.jl:
+initial commit.
+
+I ran PEcluster with four parameters from the wsa data on the output of fts_features.jl -> features2cdf.jl on the aws.
+Got 64 clusters on about 250K data.  Each fts_flowset now contains:  ident,(4 features), fqdn, threat, descr.
+clusters.jl processes the cluster file (nominally clusters.out) from PEcluster by sorting on (cluster_no, prob)
+and then printing one line for each cluster: cluster_no, #connections, average prob.
