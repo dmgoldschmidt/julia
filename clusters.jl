@@ -56,7 +56,7 @@ function main(cmd_line = ARGS)
     if data[i][1] != prev_cluster #output the stats
       avg = round(avg/nsize,digits=3)
       var = round(sqrt((var - avg*avg)/nsize),digits=3)
-      println(stream,"cluster $prev_cluster: $nsize connections, average prob: $avg)
+      println(stream,"cluster $prev_cluster: $nsize connections, average prob: $avg")
       nsize = 0;avg= 0;var = 0
       prev_cluster = data[i][1]
     end

@@ -79,3 +79,4 @@ I ran PEcluster with four parameters from the wsa data on the output of fts_feat
 Got 64 clusters on about 250K data.  Each fts_flowset now contains:  ident,(4 features), fqdn, threat, descr.
 clusters.jl processes the cluster file (nominally clusters.out) from PEcluster by sorting on (cluster_no, prob)
 and then printing one line for each cluster: cluster_no, #connections, average prob.
+(just added SLDN to the list, but I'm going to change it to FQDN).
