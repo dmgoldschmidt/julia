@@ -1,8 +1,9 @@
 #! /home/david/julia-1.5.3/bin/julia
 util_loaded = true
-StreamType = Union{IOStream,Base.TTY}
+StreamType = Union{IOStream,Base.TTY,GZip.GZipStream}
 NumType = Union{Int64,Float64}
 StringType = Union{String,SubString{String}}
+import GZip
 
 function is_dotted_quad(s::StringType)
   fields = split(s,".")

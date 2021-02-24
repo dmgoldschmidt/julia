@@ -1,4 +1,4 @@
-#! /home/david/julia-1.5.3/bin/julia
+#!/home/dmgoldschmidt/julia-1.5.3/bin/julia
 import GZip
 if !@isdefined(CommandLine_loaded)
   include("CommandLine.jl")
@@ -9,9 +9,6 @@ end
 if !@isdefined(util_loaded)
   include("util.jl")
 end
-
-
-StreamType = Union{IOStream,Base.TTY}
 
 function is_dotted_quad(s::StringType)
   fields = split(s,".")
