@@ -130,7 +130,7 @@ function search(x, A, lower::Int64 = 1, upper::Int64 = length(A))
   return (upper, upper - (upper-x)/(upper-lower))
 end
 
-function main(cmd_line = ARGS)
+function sort_main(cmd_line = ARGS)
   defaults = Dict{String,Any}("nrows"=>5,"ncols"=>2, "seed"=>12345)
   cl = get_vals(defaults,cmd_line) # replace defaults with command line values
   println("parameters: $defaults")
@@ -162,15 +162,15 @@ end
 # b) it's being run from the REPL
 if occursin("sort.jl",PROGRAM_FILE)
   include("CommandLine.jl")
-  main(ARGS)
+  sort_main(ARGS)
 else
   if isinteractive()
     include("CommandLine.jl")
     print("enter command line: ")
     cmd = readline()
-    main(map(string,split(cmd)))
+    sort_main(map(string,split(cmd)))
   end
-end # to execute directly from command line: ./features2cdf.jl <ARGS>
+end # to execute directly from command line: ./sort.jl <ARGS>
 
 
 

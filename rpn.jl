@@ -53,6 +53,10 @@ while entry != "quit"
     stack[top] = cos(stack[top])
   elseif entry == "tan"
     stack[top] = tan(stack[top])
+  elseif entry == "exp"
+    stack[top] = exp(stack[top])
+  elseif entry == "log" && stack[top] > 0
+    stack[top] = log(stack[top])
   elseif entry == "" #duplicate the top of the stack
     push!(stack,stack[top])
     top += 1
