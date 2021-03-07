@@ -80,3 +80,26 @@ Got 64 clusters on about 250K data.  Each fts_flowset now contains:  ident,(4 fe
 clusters.jl processes the cluster file (nominally clusters.out) from PEcluster by sorting on (cluster_no, prob)
 and then printing one line for each cluster: cluster_no, #connections, average prob.
 (just added SLDN to the list, but I'm going to change it to FQDN).
+
+Thu 04 Mar 2021 09:15:30 AM PST
+Wrote and debugged (I hope!) predict.jl, which inputs 5-dimensional clustering on the wsa cdf data.  The fifth
+variable is the threat value, and the idea is to compute the conditional pdf on the threat using the other four
+variables and then score the threat.  So far, the results have been fairly disappointing.  There's a counter-intuitive
+result that I get better answers with fewer states (clusters).  This suggests that there's a bug somewhere.  Right
+now, I'm using the conditional distribution from the full n-state model, but there's nothing to prevent just
+choosing the best state and getting prediction from that state only.  I'll try that next.  I also want to
+experiment with a few extra derived variables, like inbytes/(inbytes+outbytes) and a language model score on
+the fqdn.
+
+Fri 05 Mar 2021 04:50:24 PM PST
+Making some mods to predict, but so far I have no joy.  The scoring rate is very bad for all models so far.  I'm
+about to compute simple rms error.  I also discovered that Vector{Float64}(undef, dim) is NOT a good way to initialize
+a vector.  Turns out you should use fill(0.0,dim) or fill(0.0, (nrows,ncols)).  This is more bizarro julia usage.
+
+Sat 06 Mar 2021 04:50:08 PM PST
+OK, I'm getting basically garbage results back on threat prediction.  There's two possibilities:  1) a bug,
+2) there's no soup in the four predictors towards the threat number.  To disambiguate these, my next move
+will be to generate fake test data with four predictors consisting of random no.s in [0,1], and a fifth
+goal which is the sum of all four plus a small amount of noise.  Then I'll run PE cluster on the fake data,
+and then predict.jl.  I *must* see a strong ability to predict the sum from the other four.  Before I start,
+I want to review the connection between the conditional distribution and linear regression.
