@@ -127,7 +127,11 @@ function search(x, A, lower::Int64 = 1, upper::Int64 = length(A))
     else lower = i
     end
   end
-  return (upper, upper - (upper-x)/(upper-lower))
+  try
+    return (upper, upper - (upper-x)/(upper-lower))
+  catch
+    return (upper,0)
+  end
 end
 
 function sort_main(cmd_line = ARGS)

@@ -103,3 +103,18 @@ will be to generate fake test data with four predictors consisting of random no.
 goal which is the sum of all four plus a small amount of noise.  Then I'll run PE cluster on the fake data,
 and then predict.jl.  I *must* see a strong ability to predict the sum from the other four.  Before I start,
 I want to review the connection between the conditional distribution and linear regression.
+
+Sat 13 Mar 2021 09:42:00 PM PST
+I essentially rewrote predict so that I can test some of the code by building a 1-state model directly from
+the simulated (or real, I guess) data and then predicting with it.  Once I get that working, I can go back to
+the multi-state model on the simulated data and finally on the real data.  Next step:  debugging the new code.
+Along the way, I implemented the matrix Welford algorithm, and my own version of tryparse, called myparse, which
+instead of returning Nothing on an error, prints an error message and exits.
+
+Mon 15 Mar 2021 10:16:34 PM PDT
+It looks like predict.jl is running OK, both in test mode (1 state from the sim data) and from a model file built
+from the sim data.  I fixed quite a few minor glitches.  One more test, using 2 states from the model file, which
+should give substantially the same results.  Then I'll re-build the real model from the wsa data and rerun predict.
+We'll see if there's any soup.
+
+

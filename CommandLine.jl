@@ -124,7 +124,8 @@ function command_line(s::Array{String} = ARGS)
   end
   return c
 end
-const StringType = Union{String,SubString{String}}
+
+StringType = Union{String,SubString{String}}
 function get_vals(defaults::Dict{String,Any}, s::Array = ARGS, c::CommandLine=CommandLine([],[]))
   if length(c.option) == 0 && length(c.value) == 0
     c = command_line(s)

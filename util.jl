@@ -1,10 +1,18 @@
 #! /home/david/julia-1.5.3/bin/julia
 util_loaded = true
+import GZip
 StreamType = Union{IOStream,Base.TTY,GZip.GZipStream}
 NumType = Union{Int64,Float64}
 StringType = Union{String,SubString{String}}
-import GZip
 
+struct my_round
+  digits::Int64
+end
+function (r::my_round)(x::Float64)
+  return round(x,digits=r.digits)
+end
+
+  
 function is_dotted_quad(s::StringType)
   fields = split(s,".")
   if length(fields) != 4; return false; end
@@ -28,6 +36,17 @@ function tryopen(filename::String)
     exit(1)
   end
   return stream
+end
+
+function myparse(T::DataType, s::String)
+  x = 0
+  try
+    x = parse(T,s)
+  catch
+    println(stderr,"Can't parse $s.  Bailing out.")
+    exit(1)
+  end
+  return x
 end
 
 #NOTE: sizehint!(A,n) may be a good idea
@@ -62,5 +81,35 @@ function Base.length(v::VarArray)
   return length(v.A)
 end
 
+mutable struct Welford
+  S1::Vector{Float64}
+  S2::Matrix{Float64}
+  weight::Float64
+  tau::Float64
+  function Welford(dim::Int64, t::Float64 = 1.0)
+    weight = 0;
+    S1 = zeros(dim);
+    S2 = zeros(dim,dim);
+    return new(S1,S2,weight,t);
+  end
+end
 
+function update(W::Welford, x::Vector{Float64}, w::Float64 = 1.0)
+#  println("updating $W with $x")
+  if w < 1.0e-10; return; end
+  delta = w.*x
+  if W.weight > 0; delta -= (w/W.weight).*W.S1; end
+  W.weight = W.tau*W.weight + w
+  W.S1 = W.tau.*W.S1 + w.*x
+  W.S2 = W.tau.*W.S2 + delta*transpose(x - (1.0/W.weight).*W.S1)
+#  println("new W: $W")
+end
 
+function mean(W::Welford)
+  return W.weight == 0 ? W.S1 : (1.0/W.weight).*W.S1
+end
+function covariance(W::Welford)
+  return W.weight == 0 ? W.S2 : (1.0/W.weight).*W.S2
+end
+
+    
