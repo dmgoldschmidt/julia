@@ -15,8 +15,8 @@ using Distributions
 
 
 function predict_main(cmd_line = ARGS)    
-  defaults = Dict{String,Any}("nstates"=>64, "dim"=>5,"ndata"=>0, "file_dir" => ".",
-                              "data_file"=>"sim_data.txt","model_file"=>"","out_file"=>"predictions.txt")
+  defaults = Dict{String,Any}("nstates"=>64, "dim"=>5,"ndata"=>0, "file_dir" => "../Bridgery/wsa/07-01",
+                              "data_file"=>"rare_cdf.txt","model_file"=>"model.out","out_file"=>"predictions.txt")
   cl = get_vals(defaults,cmd_line) # replace defaults with command line values
   println("parameters: $defaults")
   nstates = defaults["nstates"] # size of model to use
@@ -106,9 +106,9 @@ function predict_main(cmd_line = ARGS)
   # OK, we now have model[:,:,:] either from the model file or we have a 1-state model directly from data
   # Now compute the conditional distributions
   dim1::Int64 = dim - 1
-  Sigma_11_inv = Array{Float64,3}(undef,nstates,dim1,dim1) # covariance matrix of the predictors
+  Sigma_11_inv = Array{Float64,3}(undef,nstates,dim1,dim1) # inverse covariance matrix of the (training) predictors
   Sigma_21 = Array{Float64,2}(undef,nstates,dim1)
-  mu_1 = Array{Float64,2}(undef,nstates,dim1)
+  mu_1 = Array{Float64,2}(undef,nstates,dim1) # mean training predictor
   mu_2 = Array{Float64,1}(undef,nstates)
   mu_bar = Array{Float64,1}(undef,nstates)
   odds = Array{Float64,1}(undef,nstates)
@@ -118,7 +118,7 @@ function predict_main(cmd_line = ARGS)
     mu = model[j,:,dim+1] # get the last column
     # notation follows Wikipedia: 'Multivariate Normal Distributions' with 1 & 2 interchanged
     mu_1[j,:] = mu[1:dim1] # mean threat predictors (everything but the threat)
-    mu_2[j] = mu[dim] # mean observed threat
+    mu_2[j] = mu[dim] # mean training  threat
     Sigma = model[j,:,1:dim] # full covariance matrix
     Sigma_11 = Sigma[1:dim1,1:dim1] # covariance matrix of the predictors
     Sigma_11_inv[j,:,:] = inv(Sigma_11)
@@ -168,7 +168,7 @@ function predict_main(cmd_line = ARGS)
       state_score[j] += log(odds[j])
       log_odds = log(odds[j])
       true_mu = sum(pred)/dim1
-      println("\ndata $i: log_odds = $(rnd(log_odds)). mu_bar = $(rnd(mu_bar[j])), Sigma_bar = $(rnd(Sigma_bar[j])), mu = $(rnd(data[dim])), true_mu = $(rnd(true_mu)), sigmage = $(rnd(sig))")
+#      println("\ndata $i: log_odds = $(rnd(log_odds)). mu_bar = $(rnd(mu_bar[j])), Sigma_bar = $(rnd(Sigma_bar[j])), mu #= $(rnd(data[dim])), true_mu = $(rnd(true_mu)), sigmage = $(rnd(sig))")
     end
     if avg_odds <= 0
       println("avg odds at line $nlines: $avg_odds")
