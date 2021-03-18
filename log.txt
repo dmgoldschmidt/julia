@@ -117,4 +117,8 @@ from the sim data.  I fixed quite a few minor glitches.  One more test, using 2 
 should give substantially the same results.  Then I'll re-build the real model from the wsa data and rerun predict.
 We'll see if there's any soup.
 
-
+Wed 17 Mar 2021 05:01:20 PM PDT
+I think I wasn't really doing prediction right, so I've changed predict.jl to compute a per data point per state
+weight based on the pdf of the four-long predictor.  I find the "best state at time t" using this, and compute
+a prediction using that state.  I also make a "soft choice" by doing a weighted sum across all the states
+on the conditional mean and variance.  So far, the results are terrible.

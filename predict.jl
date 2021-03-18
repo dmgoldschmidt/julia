@@ -31,7 +31,7 @@ function predict_main(cmd_line = ARGS)
     data_file = file_dir*"/"*data_file
     model_file = file_dir*"/"*model_file
   end
-  stream = tryopen(data_file)
+  stream = tryopen(data_file) # this is from util.jl
   all_lines = readlines(stream)
   if(ndata == 0)
     ndata = length(all_lines)
@@ -40,13 +40,13 @@ function predict_main(cmd_line = ARGS)
   all_data = fill(0.0,ndata,dim)
   for i in 1:ndata
     field = map(string,split(all_lines[i])) # split the ith line
-    all_data[i,:] = [myparse(Float64,field[j+1]) for j in 1:dim] # save the floats 
+    all_data[i,:] = [myparse(Float64,field[j+1]) for j in 1:dim] # save the floats (col.s 2 -> 2+dim) 
   end
 #  println("all_data: $(map(rnd,all_data))")
   # OK, we've read in the data and parsed it
   model = Array{Float64,3}(undef,nstates,dim,dim+1)
   omega = Vector{Float64}(undef,nstates)
-  W = Welford(dim)
+  W = Welford(dim) #online mean/covariance computation (util.jl)
 
   if model_file == "" # build a 1-state model from the data
     for i in 1:ndata
@@ -62,11 +62,12 @@ function predict_main(cmd_line = ARGS)
     
   else # read the model from model_file
 
-    stream = occursin(".gz",model_file) ? GZip.open(model_file) : open(model_file)
+    stream = tryopen(model_file)
     nrecs = 0;
     model_data = readlines(stream)
     println("read ", length(model_data)," lines")
     close(stream)
+    # now look for the correct model (the file generally contains multiple models)
     found = false
     i = 0
     while i < length(model_data)
@@ -106,95 +107,84 @@ function predict_main(cmd_line = ARGS)
   # OK, we now have model[:,:,:] either from the model file or we have a 1-state model directly from data
   # Now compute the conditional distributions
   dim1::Int64 = dim - 1
-  Sigma_11_inv = Array{Float64,3}(undef,nstates,dim1,dim1) # inverse covariance matrix of the (training) predictors
+  Sigma_11_inv = Array{Float64,3}(undef,nstates,dim1,dim1) # inverse marginal covariance matrix of the predictors
   Sigma_21 = Array{Float64,2}(undef,nstates,dim1)
   mu_1 = Array{Float64,2}(undef,nstates,dim1) # mean training predictor
-  mu_2 = Array{Float64,1}(undef,nstates)
-  mu_bar = Array{Float64,1}(undef,nstates)
-  odds = Array{Float64,1}(undef,nstates)
-  Sigma_bar = Array{Float64,1}(undef,nstates)
-
+  mu_2 = Array{Float64,1}(undef,nstates) # mean goal (threat)
+  mu_bar = Array{Float64,1}(undef,nstates) # conditional mean prediction for a given set of predictors
+  Sigma_bar = Array{Float64,1}(undef,nstates) # conditional variance
+  sqrt_det_Sigma_11 = Array{Float64,1}(undef,nstates) # the name says it
   for j in 1:nstates
     mu = model[j,:,dim+1] # get the last column
     # notation follows Wikipedia: 'Multivariate Normal Distributions' with 1 & 2 interchanged
     mu_1[j,:] = mu[1:dim1] # mean threat predictors (everything but the threat)
     mu_2[j] = mu[dim] # mean training  threat
     Sigma = model[j,:,1:dim] # full covariance matrix
-    Sigma_11 = Sigma[1:dim1,1:dim1] # covariance matrix of the predictors
+    Sigma_11 = Sigma[1:dim1,1:dim1] # covariance matrix of the marginal distribution of the predictors
     Sigma_11_inv[j,:,:] = inv(Sigma_11)
     Sigma_21[j,:] = Sigma[dim,1:dim1]
-    Sigma_bar[j] = sqrt(Sigma[dim,dim] - transpose(Sigma_21[j,:])*Sigma_11_inv[j,:,:]*Sigma_21[j,:])
+    Sigma_bar[j] = Sigma[dim,dim] - transpose(Sigma_21[j,:])*Sigma_11_inv[j,:,:]*Sigma_21[j,:]
+    # sigma_bar is the conditional variance which, unlike mu_bar is independent of the actual predictor values 
+    sqrt_det_Sigma_11[j] = sqrt(det(Sigma_11)) 
   end
   #Now make a prediction and score it
   #NOTE:  this is how to initialize an array.
-  state_score = fill(0.0,nstates) # a separate score for each state
-  sigmage = fill(0.0,nstates)
-  sq_error = fill(0.0,nstates)
+  best_state_score = 0
   score = 0
+  weight = Array{Float64,1}(undef,nstates)
   for i in 1:ndata
     data = all_data[i,:]
     pred = data[1:dim1] # threat predictors 
-    avg_odds = 0
-    
+    tot_weight = 0
+    best_state::Int64 = 1
+    avg_mu_bar::Float64 = 0
+    avg_Sigma_bar::Float64 = 0
     for j in 1:nstates
-      mu_bar[j] = mu_2[j] + transpose(Sigma_21[j,:])*Sigma_11_inv[j,:,:]*(pred - mu_1[j,:])
+      temp = Sigma_11_inv[j,:,:]*(pred-mu_1[j,:])
+      mu_bar[j] = mu_2[j] + transpose(Sigma_21[j,:])*temp
+      weight[j] = exp(-.5*(transpose(pred-mu_1[j,:])*temp))/sqrt_det_Sigma_11[j]
+      # weight[j] is proportional to the  marginal density of pred.  It measures how well pred matches the model
+      tot_weight += weight[j]
+      if weight[j] > weight[best_state]; best_state = j ; end
       if mu_bar[j] < 0
         mu_bar[j] = 0
       elseif mu_bar[j] > 1
         mu_bar[j] = 1
       end
-      sig = abs(data[dim]-mu_bar[j])/Sigma_bar[j]
-      sigmage[j] += sig
-      sq_error[j] += (data[dim] - mu_bar[j])*(data[dim] - mu_bar[j])
-      if sq_error[j] > ndata
-        println("sq_error[$j] = $(sq_error[j]) = ($(data[dim]) - $(mu_bar[j]))^2 at line $nlines")
-        exit(0)
-      end
-     
-      # The conditional threat distribution given a and state j is \N(mu_bar,sigma_bar) 
-      d = Normal(mu_bar[j], Sigma_bar[j])
-      odds[j] = pdf(d,data[dim])/(cdf(d,1)-cdf(d,0))
-      # let r = data[dim].  r is the fractional rank of the given threat, fr(threat) for this flowset.
-      # mu_bar[j] is the predicted value of r based on the model and data[1:dim1]
-      # If dx is the length of a small interval I around r, then prob_jdx is the conditional
-      # probability that the fractional threat lies in I given that it lies in [0,1] and that the true state is j.
-      # the random probability is just dx, so odds[j] is the odds over random that fr(threat) lies in I in state j 
-      
-      avg_odds += omega[j]*odds[j] # weighted average over states
-      if odds[j] <= 0
-        println("odds_$j at line $nlines: $odds[j]")
-        continue
-      end
-      state_score[j] += log(odds[j])
-      log_odds = log(odds[j])
-      true_mu = sum(pred)/dim1
-#      println("\ndata $i: log_odds = $(rnd(log_odds)). mu_bar = $(rnd(mu_bar[j])), Sigma_bar = $(rnd(Sigma_bar[j])), mu #= $(rnd(data[dim])), true_mu = $(rnd(true_mu)), sigmage = $(rnd(sig))")
+      avg_mu_bar += weight[j]*mu_bar[j]
+      avg_Sigma_bar += weight[j]*Sigma_bar[j]
     end
-    if avg_odds <= 0
-      println("avg odds at line $nlines: $avg_odds")
-    else
-      score += log(avg_odds) # log (marginal density of fr(threat) given model and predictors)
-    end
-  end
+    avg_mu_bar /= tot_weight
+    avg_Sigma_bar /= tot_weight
+    d_avg = Normal(avg_mu_bar,sqrt(avg_Sigma_bar))
+    # the (weighted) average conditional distribution for this data point
 
-  avg_sigmage = 0
-  mean_sq_error = 0;
-  max_d = max_s = 0
-  for j in 1:nstates
-    avg_sigmage += omega[j]*sigmage[j]
-    mean_sq_error += omega[j]*sq_error[j]
-  end
-  max_d = argmax(state_score)
-  min_s = argmin(sigmage)
-  println("min_s = $min_s")
+    best_mu = mu_bar[best_state]
+    best_Sigma = Sigma_bar[best_state]
+    d_best = Normal(best_mu, sqrt(best_Sigma))
+    # the conditional distribution of the best state for this data point
+    
+    # End prediction section.  Begin scoring section
+    # This is where we trot out data[dim], the quantity we're trying to predict
+    
+    best_odds = pdf(d_best,data[dim])/(cdf(d_best,1)-cdf(d_best,0))
+    avg_odds = pdf(d_avg,data[dim])/(cdf(d_avg,1)-cdf(d_avg,0))
+
+    # explanation:
+      # let r = data[dim].  r is the fractional rank of the given threat, fr(threat) for this flowset.
+      # mu is the predicted value of r based on the model and data[1:dim1]
+      # If dx is the length of a small interval I around r, then odds*dx is the conditional
+      # probability that the fractional threat lies in I given that it lies in [0,1].
+      # the random probability is just dx, so odds is the odds over random that fr(threat) lies in I
+
+    score += log(avg_odds) # log (marginal density of fr(threat) given model and predictors)
+    best_state_score += log(best_odds)
+  end # main data loop
+  
+  score /= ndata*log(2)
+  best_state_score /= ndata*log(2)
   println("processed $ndata observations from $data_file")
-  score = round(score/(ndata*log(2)),digits=3)
-  avg_sigmage = round(avg_sigmage/ndata,digits = 3)
-  rms_error = round(sqrt(mean_sq_error/ndata),digits = 3)
-  max_state_score = round(state_score[max_d]/(ndata*log(2)),digits=3)
-  min_sigmage = round(sigmage[min_s]/ndata,digits=3)
-  println("score = $score bits/obs., avg_sigmage = $avg_sigmage, rms error: $rms_error")
-  println("max state score = $(max_state_score) bits/obs. at state $max_d, min_sigmage = $min_sigmage at state $min_s")
+  println("score = $(rnd(score)) bits/obs, best_state_score = $(rnd(best_state_score)) bits/obs.")
 end
 
 # execute main iff
