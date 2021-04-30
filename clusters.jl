@@ -67,8 +67,9 @@ function main(cmd_line = ARGS)
   close(stream)
 end
 
-if occursin("clusters.jl",PROGRAM_FILE)
-  main(ARGS)
+# execution begins here
+if occursin("clusters.jl",PROGRAM_FILE) #was clusters.jl called by a command?
+  main(ARGS) 
 else
   if isinteractive()
     print("enter command line: ")

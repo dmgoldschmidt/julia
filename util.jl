@@ -49,7 +49,11 @@ function myparse(T::DataType, s::String)
   return x
 end
 
-#NOTE: sizehint!(A,n) may be a good idea
+#NOTES:
+#1. sizehint!(A,n) may be a good idea
+#2. should be mutable.  Then update length if extended, write a
+#   function returning current length
+#3. add a max_length member and get rid of 100x
 
 struct VarArray{T}
   A::Array{T}
