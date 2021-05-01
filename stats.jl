@@ -1,5 +1,5 @@
-float_min = 1.0e-100
-epsilon = 1.0 + float_min
+float_min = 1.0020841800044864e-292
+epsilon = 2.2204460492503131e-16
 
 
 function gammln(xx::Float64)  #from NR
@@ -78,24 +78,25 @@ function pks(z::Float64) # Kolmogorov-Smirnov distribution
     println(stderr,"bad z in KSdist. Bailing out.")
     exit(1)
   end
-  if z < 0.042; return 0.; end
+  if z < 0.042; return 0.0; end
   if z < 1.18 
     y = exp(-1.23370055013616983/(z*z))
-    return 2.25675833419102515*sqrt(-log(y))
-      *(y + y^9 + y^25 + y^49)
+    return 2.25675833419102515*sqrt(-log(y))*(y + y^9 + y^25 + y^49)
   else 
     x = exp(-2.0*z*z)
-    return 1. - 2.0*(x - x^4 + x^9)
+    return 1.0 - 2.0*(x - x^4 + x^9)
   end
 end
 
-function qks(z::Float64) 
-  if z < 0.
+function qks(z::Float64)
+  println("z = $z");
+  if z < 0.0
     println(stderr,"bad z in KSdist. Bailing out.")
     exit(1)
   end
-  if z == 0.; return 1.; end
+  if z == 0.0; return 1.0; end
   if (z < 1.18); return 1.0 - pks(z); end
   x = exp(-2.0*z*z)
-  return 2.0*(x - x^4 + x^9)
+  println("x = $x")
+  return 2.0*(x - (x^4) + (x^9))
 end

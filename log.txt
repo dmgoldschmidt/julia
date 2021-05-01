@@ -123,17 +123,33 @@ weight based on the pdf of the four-long predictor.  I find the "best state at t
 a prediction using that state.  I also make a "soft choice" by doing a weighted sum across all the states
 on the conditional mean and variance.  So far, the results are terrible.
 
-Thu 18 Mar 2021 05:43:12 PM PDT
-I built an 8-state test model (4 predictors + threat) using simulated data, which involved an 8x4 random matrix M.
-At time t, I print M[t%8+1,:] followed by the sum of the four random no.s, but I apply a small amount of white
-noise to all five values before printing.  If I run PEcluster on this data, I get an 8-state model which nails
-the 8 random states.  I then use the model+data together with predict.jl and as expected, I get very strong
-prediction scores.  So I don't think either program has bugs, it's just that there is no discernable linear-ish
-relationship between the actual 4 predictors and the threat.
-I also got the julia notebook running again.  For some reason, I couldn't reproduce my earlier success using Ijulia.
-But I somehow blundered into successfully importing Conda, figuring out where the notebook execution point was,
-and installing an alias "notebook" in .bashrc.  So I can get a julia notebook going by just typing "notebook"
-at the emacs shell prompt.  Unfortunately, there's something hokey with markdown/latex -- I tried to install equation numbering, but it didn't work, and not only that, my version doesn't recognize \begin{equation}, although \begin{align} does work.  Go figure.  See ~/temp for some code that I can supposedly execute in a notebook cell, but it doesn't seem
-to work (with either \begin{equation} or \begin{align}.  So at this point, serious use of latex in the notebook seems
-to be a non-starter.
+Thu 18 Mar 2021 05:43:12 PM PDT I built an 8-state test model (4 predictors +
+threat) using simulated data, which involved an 8x4 random matrix M.  At time
+t, I print M[t%8+1,:] followed by the sum of the four random no.s, but I apply
+a small amount of white noise to all five values before printing.  If I run
+PEcluster on this data, I get an 8-state model which nails the 8 random
+states.  I then use the model+data together with predict.jl and as expected, I
+get very strong prediction scores.  So I don't think either program has bugs,
+it's just that there is no discernable linear-ish relationship between the
+actual 4 predictors and the threat.  I also got the julia notebook running
+again.  For some reason, I couldn't reproduce my earlier success using Ijulia.
+But I somehow blundered into successfully importing Conda, figuring out where
+the notebook execution point was, and installing an alias "notebook" in
+.bashrc.  So I can get a julia notebook going by just typing "notebook" at the
+emacs shell prompt.  Unfortunately, there's something hokey with
+markdown/latex -- I tried to install equation numbering, but it didn't work,
+and not only that, my version doesn't recognize \begin{equation}, although
+\begin{align} does work.  Go figure.  See ~/temp for some code that I can
+supposedly execute in a notebook cell, but it doesn't seem to work (with
+either \begin{equation} or \begin{align}.  So at this point, serious use of
+latex in the notebook seems to be a non-starter.
+
+Sat 01 May 2021 03:32:14 PM PDT
+I've been making log entries in the Bridgery log for a while, but I thought
+I'd come back here to record stats.jl, which is a direct recoding of the NR
+routines needed for KScomp and Chisq.  Everything checks in a direct test
+*except* that gammq(a,x) for x >= 1+a is off after 3 or 4 decimal places. So
+the discrepancy is with the gcf code, which is a continued fraction calculation.
+I'm not sure why it's off, but for now I'm not worrying about it.  I did check
+gammq(16,28) with an online calculator, and the NR result checks very closely.
 
