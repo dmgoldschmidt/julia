@@ -21,6 +21,7 @@ function is_dotted_quad(s::StringType)
   return true
 end
 
+# flowset for parsing wsa files
 mutable struct Flowset
   ident::String
   nrecs::Int64
