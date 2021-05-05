@@ -31,7 +31,7 @@ end
 
 function read_model(nstates::Int64,dim::Int64,fname::String)
   stream = tryopen(fname)
-  println("nstates = $nstates, dim = $dim, fname = $fname")
+#  println("nstates = $nstates, dim = $dim, fname = $fname")
   found = false
   for line in eachline(stream)
     fields = split(line)
@@ -65,7 +65,7 @@ function read_model(nstates::Int64,dim::Int64,fname::String)
   return model
 end
 
-function gamma(model::Model, v::Vector{Float64})
+function prob(model::Model, v::Vector{Float64})
   if(length(v) != model.dim)
     println(stderr,"Model.prob: input vector does not have length $(model.dim). Returning probability zero.")
     return zeros(model.nstates)
@@ -81,12 +81,11 @@ function gamma(model::Model, v::Vector{Float64})
   return p/sum
 end
 
-
-model = read_model(2,8,"model.out")
-write_model(model)
-v = model.mean[1,:]
-rnd = my_round(3)
-prob = map(rnd,gamma(model,v))
-println("gamma: $prob")
+# model = read_model(2,8,"model.out")
+# write_model(model)
+# v = model.mean[1,:]
+# rnd = my_round(3)
+# p = map(rnd,prob(model,v))
+# println("prob: $p")
 
 

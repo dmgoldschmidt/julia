@@ -24,13 +24,13 @@ function is_dotted_quad(s::StringType)
   return true
 end
 
-function tryopen(filename::String)
+function tryopen(filename::String, mode::String = "r")
   if endswith(filename,".gz")
     println("endswith .gz")
   end
   stream::StreamType = stdin
   try
-    stream = endswith(filename,".gz") ? GZip.open(filename) : open(filename)
+    stream = endswith(filename,".gz") ? GZip.open(filename,mode) : open(filename,mode)
   catch
     println(stderr,"Can't open $filename. Bailing out.")
     exit(1)
