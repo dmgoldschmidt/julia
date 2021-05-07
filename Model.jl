@@ -51,6 +51,12 @@ function read_model(nstates::Int64,dim::Int64,fname::String)
   model = Model(nstates,dim)
   line = readline(stream)
   fields = map(string,split(line))
+  l = length(fields)
+  if l < nstates
+    println(stderr,"read_model: no. of states is $l < $nstates.  Resetting nstates to $l.")
+    nstates = model.nstates = l;
+  end
+              
   model.omega = [myparse(Float64,fields[j]) for j in 1:nstates]
   for i in 1:nstates
     for j in 1:dim
@@ -78,7 +84,8 @@ function prob(model::Model, v::Vector{Float64})
     p[s] = exp(-.5*dot(y,y))*det(model.inv_cov[s,:,:])
     sum += p[s]
   end
-  return p/sum
+  for s in 1:model.nstates; p[s] /= sum; end
+  return p
 end
 
 # model = read_model(2,8,"model.out")

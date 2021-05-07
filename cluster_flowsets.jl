@@ -1,4 +1,4 @@
-#! /home/david/julia-1.5.3/bin/julia
+#! /home/dmgoldschmidt/julia-1.5.3/bin/julia
 
 # This program reads a file of new format flowsets and a model file
 # and writes the net_ident, and cluster probability vector.  
@@ -72,19 +72,23 @@ function main(cmd_line = ARGS)
   # end
   stream = tryopen(out_file,"w")
   model = read_model(nstates,dim,model_file)
+  nstates = model.nstates # it was possibly reset
   rnd = my_round(5)
   for i in 1:nrecs
     gamma = map(rnd,prob(model,data[i]))
     print(stream,ident[i],":")
     max_prob = 0.0
     max_j = 0
+    sum = 0
     for j in 1:nstates
+      sum += gamma[j];
       print(stream," ",gamma[j])
       if gamma[j] > max_prob
         max_prob = gamma[j]
         max_j = j
       end
     end
+    if sum > 1.0; print(stream,"ERR: ");end
     print(stream," $max_j: $max_prob\n")
   end
   close(stream)
