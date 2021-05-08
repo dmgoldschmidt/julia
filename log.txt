@@ -153,3 +153,6 @@ the discrepancy is with the gcf code, which is a continued fraction calculation.
 I'm not sure why it's off, but for now I'm not worrying about it.  I did check
 gammq(16,28) with an online calculator, and the NR result checks very closely.
 
+Sat 08 May 2021 09:49:48 AM PDT
+Found a nasty little bug in read_model.  The inverse cholesky was not
+being parsed correctly.  Looks OK now.

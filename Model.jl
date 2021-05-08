@@ -63,11 +63,12 @@ function read_model(nstates::Int64,dim::Int64,fname::String)
       line = readline(stream)
       fields = map(string,split(line))
       for k in 1:dim-j+1
-        model.inv_cov[i,k,k+j-1] = myparse(Float64,fields[k]) 
+        model.inv_cov[i,j,k+j-1] = myparse(Float64,fields[k]) 
       end
       model.mean[i,j] = myparse(Float64,fields[dim-j+2])
     end
   end
+#  write_model(model)
   return model
 end
 
@@ -81,6 +82,11 @@ function prob(model::Model, v::Vector{Float64})
   for s in 1:model.nstates
     x = transpose(model.mean[s,:] - v)
     y = x*model.inv_cov[s,:,:]
+    # d = det(model.inv_cov[s,:,:])
+    # if d <= 0
+    #   println(stderr,"prob: det($s) = $d. inv_cov:\n", model.inv_cov[s,:,:])
+    #   exit(1)
+    # end
     p[s] = exp(-.5*dot(y,y))*det(model.inv_cov[s,:,:])
     sum += p[s]
   end

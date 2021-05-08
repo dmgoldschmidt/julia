@@ -1,4 +1,4 @@
-#! /home/dmgoldschmidt/julia-1.5.3/bin/julia
+#! /home/david/julia-1.5.3/bin/julia
 
 # This program reads a file of new format flowsets and a model file
 # and writes the net_ident, and cluster probability vector.  
