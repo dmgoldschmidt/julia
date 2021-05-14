@@ -94,11 +94,60 @@ function prob(model::Model, v::Vector{Float64})
   return p
 end
 
-# model = read_model(2,8,"model.out")
-# write_model(model)
-# v = model.mean[1,:]
-# rnd = my_round(3)
-# p = map(rnd,prob(model,v))
-# println("prob: $p")
+# execute main iff
+# a) it's being run from a file containing the string "sort.jl", or
+# b) it's being run from the REPL
 
+using Printf
+function model_main(cmd_line = ARGS)
+  defaults = Dict{String,Any}(
+    "model_file"=>"model.out",
+    "out_file"=>"print.out",
+    "nstates"=>16,
+    "dim"=>8
+  )
+  cl = get_vals(defaults,cmd_line) # replace defaults with command line values
+  println("parameters: $defaults")
+  nstates = defaults["nstates"]
+  dim = defaults["dim"]
+  @assert(1 <= dim <= 8)
+  model_file = defaults["model_file"]
+  out_file = defaults["out_file"]
+  model = read_model(nstates,dim,model_file)
+  nstates = model.nstates #might be reset
+  features = (
+    "InB",
+    "InD",
+    "o2i",
+    "OutB",
+    "OutD",
+    "i2o",
+    "o2o",
+    "DBC"
+  )
+  stream = tryopen(out_file,"w")
+  @printf(stream,"st")
+  for i in 1:dim
+    @printf(stream,"     %s",features[i])
+  end
+  @printf(stream,"\n\n")
+  for i in 1:nstates
+    @printf(stream,"%2d",i)
+    for j in 1:dim
+      @printf(stream,"%8.0f",-log(model.mean[i,j])/log(2))
+    end
+    @printf(stream,"\n")
+  end
+end
 
+if occursin("Model.jl",PROGRAM_FILE)
+  include("CommandLine.jl")
+  model_main(ARGS)
+else
+  if isinteractive()
+    include("CommandLine.jl")
+    print("enter command line: ")
+    cmd = readline()
+    main(map(string,split(cmd)))
+  end
+end 

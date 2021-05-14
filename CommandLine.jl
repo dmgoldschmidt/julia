@@ -150,7 +150,7 @@ function get_vals(defaults::Dict{String,Any}, s::Array = ARGS, c::CommandLine=Co
       if typeof(defaults[option]) == String
         defaults[option] = c.value[best_match[2]]
       elseif typeof(defaults[option]) == Bool
-        Detaults[option] = true
+        defaults[option] = true
       else
         defaults[option] = tryparse(typeof(defaults[option]),c.value[best_match[2]])
         # NOTE: value = nothing if we find a match to option but can't parse the string 
