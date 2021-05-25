@@ -1,6 +1,8 @@
 Model_loaded = true
 include("util.jl")
 using LinearAlgebra
+#using Debugger
+#break_on(:error)
 
 mutable struct Model
   nstates::Int64
@@ -148,6 +150,6 @@ else
     include("CommandLine.jl")
     print("enter command line: ")
     cmd = readline()
-    main(map(string,split(cmd)))
+    model_main(map(string,split(cmd)))
   end
 end 
