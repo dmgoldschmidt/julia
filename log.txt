@@ -156,3 +156,9 @@ gammq(16,28) with an online calculator, and the NR result checks very closely.
 Sat 08 May 2021 09:49:48 AM PDT
 Found a nasty little bug in read_model.  The inverse cholesky was not
 being parsed correctly.  Looks OK now.
+
+Wed May 19 10:40:37 2021
+I experimented with applying the log function to the tail probabilities, but that didn't seem to do anything.
+Then I ran a 64 state PEcluster using the actual probabilities, except that all probabilities
+less than 1.0e-20 were set to zero.  I got 40 non-zero states, with some interesting output
+from Model.jl, but I'm wondering if the KS and chisq calculations are really correct.
