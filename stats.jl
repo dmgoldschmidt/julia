@@ -48,7 +48,7 @@ function gammln(xx::Float64)  #from NR
   return tmp+log(2.5066282746310005*ser/x)
 end
 
-function gser(a::Float64, x::Float64) 
+function gser(a::Float64, x::Float64)
   gln = gammln(a)
   ap = a
   del = sum = 1.0/a
