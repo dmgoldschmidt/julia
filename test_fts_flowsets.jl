@@ -5,7 +5,7 @@ readers = [Channel(Reader,10;taskref = taskrefs[i]) for i in 1:2]
 file = ["test.out","test1.out"]
 for i in 1:2
   msg = ReaderMessage(OPEN,file[i])
-  println("about to put $(msg.ident), $(msg.payload) on channel taskref[$i]")
+  println("thread $(Threads.threadid()): about to put $(msg.ident), $(msg.payload) on channel $(taskrefs[i])")
   put!(readers[i],msg)
   ntries = 0
   while msg.ident != COMPLETE
@@ -19,6 +19,6 @@ println("readers: $readers")
 for i in 1:2
   for msg in readers[i]
     if msg.ident == EOF ; break; end
-    println(msg.payload)
+    println("thread $(Threads.threadid()): $(msg.payload)")
   end
 end
