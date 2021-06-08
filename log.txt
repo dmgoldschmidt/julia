@@ -162,3 +162,81 @@ I experimented with applying the log function to the tail probabilities, but tha
 Then I ran a 64 state PEcluster using the actual probabilities, except that all probabilities
 less than 1.0e-20 were set to zero.  I got 40 non-zero states, with some interesting output
 from Model.jl, but I'm wondering if the KS and chisq calculations are really correct.
+
+Sun 06 Jun 2021 10:45:37 AM PDT
+Lots of house guests have slowed progress to a crawl.  I decided to try dropping KS and use chi-square for all
+tail probabilities, but this requires some non-trivial re-writing of get_fts_flowsets in particular.  So I'm trying
+a re-write in julia.  I found a VERY informative piece of multi-threaded julia code (prime sieve of aristophanes) so
+I've been working with julia multithreading to try to parallelize get_fts_flowsets.  The main obstacle is that
+the ident lookups have to be done with a dictionary, and it's not thread-safe.  So I wrote SafeDict.jl, which
+was inspired by the sieve code.  It spawns a task which reads a julia Channel and does the lookup.  The main insight
+was to forget about threads and just think of asynchronously running tasks, communicating via julia Channels.
+Debugging was difficult, but it seems to be working on the test code now.  One problem is that my current
+version of vmware has just one thread.  I think I can start up a new guest machine with multiple threads but I
+haven't done it yet.
+
+Sun 06 Jun 2021 04:36:06 PM PDT
+I spent most of the day thinking about the design of get_fts_flowsets.jl.  I think I'll try the following task-centric
+approach:  There will be three types of tasks: one reader, one writer, and multiple workers.  This will only work if
+I can have a large number (say 50K) worker tasks active at one time, because each task will handle one net_ident at
+a time.  Each task will be associated to a unique channel.  The worker (task,channel) pairs will be in an
+Array{Channel}(50000). All of the tasks will be fired up by the master thread at the beginning, and they will
+immediately go into an infinite loop whose first step is to take! a message from their channel.  All the messages
+will be mutable structs which will have a action field (an enum describing the payload(s)) and one or more
+payload fields.  Here's my current thinking for the messages:
+
+reader messages:
+ident: "open", payload = filename, 
+       direction: master -> reader
+ident: "data", payload = string (one line from the file)
+       direction: reader -> master
+ident: "eof", no payload
+       direction: reader -> master
+ident: error, payload = error message/data
+       direction: reader -> master
+Description: Reader waits for the "open" message, opens the file and enters an infinite loop "put"-ing data
+messages to the master. At eof, reader closes the file, puts the eof message, and exits
+
+parser messages:
+ident: "raw": payload = line from file
+       direction: master -> parser
+ident: "data": payload = NetflowData struct
+worker messages:
+ident: "open" payload = fts duration, min no. of records to write, writer channel
+ident: "data", payload = netident, data from parser
+       direction: master -> worker 
+ident: "error" (overflow error)
+ident: "exit", payload.closed is set to true when worker exits
+
+Description: Each worker waits for an "exit" or "data" message.  "data": If the current record count is zero,
+the histogram matrix is cleared, the net_ident is stored, and the record count is set to 1. Then the net_ident and time
+are checked. If the net_ident doesn't check, an overflow message is returned.  Otherwise, if time has expired
+and the record count exceeds the minimum, the chi-squares are computed and the output is "put"on the write channel.
+Then the histograms, record count, and net_ident are cleared.  If time has not expired, the record count and
+the histograms are incremented. 
+"exit": the write/clear process is executed, the payload is set to "completed" and the worker exits. 
+
+writer messages:
+ident: "open", payload = filename
+       direction: master -> writer
+ident: "data", payload = data to write
+       direction: worker -> writer or (master -> writer)
+ident: "error", payload = error message/data
+       direction: writer -> worker or master
+
+Master process:
+1. Start all the tasks.
+2. put an "open" message on the reader channel
+3. Enter an infinite loop, waiting on the reader channel for a data, eof, or error message
+3a. data:
+    1. call the parser and get the time, net_ident, and data fields
+    2. look up the net_ident to get the connection no. (a unique number which increments with each new net_ident)
+    3. the worker no. is the connection no. modulo the total number of workers
+    4. feed the parser output to the appropriate worker
+3b. error:
+    1. If it's an overflow error from a worker, print and error message and punt. (There were more open connections
+    than workers provided. (Maybe we can increase the set of workers here?)
+    2. If it's a reaad error from the input, try again
+3c. eof: send an exit message to every worker, wait for all channels to close, and then exit.
+
+ 
