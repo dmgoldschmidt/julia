@@ -8,7 +8,7 @@ end
 mutable struct OutputData #worker -> writer
   netident::String
   data::Array{Float64}
-  size::Int64
+  nrecs::Int64
 end
 
 @enum Ident OPEN=1 DATA=2 ERROR=3 EOF=4 EXIT=5 RAW=6 COMPLETE=7
@@ -32,7 +32,7 @@ end
 
 mutable struct WriterMessage
   ident::Ident
-  data::OutputData
+  output::OutputData
 end
 
 function Reader(c::Channel,file::String)
@@ -41,7 +41,7 @@ function Reader(c::Channel,file::String)
     t = Threads.threadid()
     for line in eachline(stream)
 #      println("thread $t: sending $line")
-      put!(c,ReaderMessage(DATA,line))
+      put!(c,ReaderMessage(DATA,line)) 
 #      println("thread $t: DATA sent")
     end
     close(stream)
@@ -51,8 +51,29 @@ function Reader(c::Channel,file::String)
   end #@spawn
 end
 
-# function Writer(c::Channel{WriterMessage})
-# end
+function Writer(c::Channel,file::String)
+  stream = tryopen(file,"w")
+  println("opened $file")
+  Threads.@spawn begin
+    t = Threads.threadid()
+    println("writing to $file on thread $t")
+    while true
+      msg = take!(c)
+      println("thread $t: got $(msg.ident) $(msg.output.netident)")
+      exit(0)
+      if msg.ident == QUIT
+        break
+      else
+        println("thread $t: writing $(msg.output.netident)")
+        write(stream,"$(msg.output.netident)")
+        for x in msg.output.data; write(stream," $x"); end
+        write(stream,"\n")
+      end
+    end
+    close(stream)
+    println("thread $t: closed $file.")
+  end #@spawn
+end
 
 # function Parser(c:Channel{ParserMessage})
 # end
