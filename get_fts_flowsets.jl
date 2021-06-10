@@ -35,27 +35,20 @@ mutable struct WriterMessage
   data::OutputData
 end
 
-function Reader(c::Channel)
-  println("task Reader has started")
-  opened::Bool = false
-  stream = stdin
-  msg = nothing
-  while(!opened) #wait for "open" message
-    msg = take!(c)
-    if msg.ident == OPEN
-      stream = tryopen(msg.payload)
-      opened = true
-      msg.ident = COMPLETE
-      println("opened $(msg.payload)")
+function Reader(c::Channel,file::String)
+  stream = tryopen(file)
+  Threads.@spawn begin
+    t = Threads.threadid()
+    for line in eachline(stream)
+#      println("thread $t: sending $line")
+      put!(c,ReaderMessage(DATA,line))
+#      println("thread $t: DATA sent")
     end
-  end
-  for line in eachline(stream)
-    println("about to put $line")
-    put!(c,ReaderMessage(DATA,line))
-  end
-  close(stream)
-  println("closed $(msg.payload)")
-  put!(c,ReaderMessage(EOF,""))
+    close(stream)
+#    println("thread $t: closed $file. Sending eof")
+    put!(c,ReaderMessage(EOF,""))
+#    println("thread $t: EOF sent")
+  end #@spawn
 end
 
 # function Writer(c::Channel{WriterMessage})

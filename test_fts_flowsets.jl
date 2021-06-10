@@ -1,24 +1,29 @@
 include("get_fts_flowsets.jl")
-#reader = Channel(Reader,10;)
-taskrefs = [Ref{Task}() for i in 1:2]
-readers = [Channel(Reader,10;taskref = taskrefs[i]) for i in 1:2]
 file = ["test.out","test1.out"]
-for i in 1:2
-  msg = ReaderMessage(OPEN,file[i])
-  println("thread $(Threads.threadid()): about to put $(msg.ident), $(msg.payload) on channel $(taskrefs[i])")
-  put!(readers[i],msg)
-  ntries = 0
-  while msg.ident != COMPLETE
-    ntries += 1
-    sleep(1)
-    println("ntries = $ntries")
-    if ntries > 10; break; end
-  end 
+chan =[Channel(10) for i in 1:2]
+eof = [false for i in 1:2]
+
+for j in 1:2
+  Reader(chan[j],file[j]) #open the Readers
+  println("$(file[j]) is open.")
 end
-println("readers: $readers")
-for i in 1:2
-  for msg in readers[i]
-    if msg.ident == EOF ; break; end
-    println("thread $(Threads.threadid()): $(msg.payload)")
-  end
+function doit()
+  i = done = 0
+  while done != 2
+    if isready(chan[i+1])
+#      println("master: waiting for DATA")
+      msg = take!(chan[i+1])
+      if msg.ident == EOF
+        println("master: EOF received.  Exiting")
+        eof[i+1] = true
+        done += 1
+      else
+        println("master: $(msg.payload)")
+      end #if EOF
+    else
+#      println("channel $(i+1) not ready")
+      i = (i+1)%2
+    end #if isready
+  end #while
 end
+doit()
