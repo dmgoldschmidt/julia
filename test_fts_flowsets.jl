@@ -4,35 +4,48 @@ function writeit()
   i = 0
   dummy = [1.0,.123456789]
   nlines = [0,0]
+  max = [2,3]
   ntries = 0
-  while nlines[1] < 2 && nlines[2] < 3
-    println("waiting for channel $(i+1)")
-    if isopen(chan[i+1])
-      output = OutputData("line$(nlines[i+1]+1) from $(file[i+1])",dummy,2)
+  msg = 0
+  while nlines[1] < max[1] || nlines[2] < max[2]
+    if nlines[i+1] < max[i+1]
+      output = OutputData("line$(nlines[i+1]+1) for $(file[i+1]) on channel $(i+1)",dummy,2)
       msg = WriterMessage(DATA,output)
-      put!(chan[i+1],msg)
-      println("sent $(msg.output.netident) to Writer $i")
+      println("master: sending $(msg.output.netident) to  channel $(i+1)")
+      put!(wchan[i+1],msg)
+      println("sent $(msg.output.netident) to channel $(i+1)")
       nlines[i+1] = nlines[i+1]+1
-    else
-      println("write channel $(i+1) not open")
-      i = (i+1)%2
-      ntries += 1
-      if ntries > 10; break; end
-    end #if isready
+    end #if
+    i = (i+1)%2
   end #while
+  output = OutputData("",dummy,2)
+  qmsg = [WriterMessage(QUIT,output) for i in 1:2]
+  for i in 1:2
+    println("master: sending QUIT on channel $i")
+    put!(wchan[i],qmsg[i])
+    println("master: QUIT sent on channel $i")
+  end
+  for i in 1:2
+    println("master: waiting for ACK on channel $i")
+    msg = take!(wchan[i])
+    if msg.ident != ACK
+      println(stderr,"comms error in writeit on channel $i.  Bailing out")
+      exit(1)
+    end
+    println("master: got ACK on channel $i") 
+  end
   println("wrote $nlines")
 end
 
 function readit()
   i = done = 0
   while done != 2
-    if isready(chan[i+1])
+    if isready(rchan[i+1])
 #      println("master: waiting for DATA")
-      msg = take!(chan[i+1])
+      msg = take!(rchan[i+1])
       if msg.ident == EOF
-        println("master: EOF received.  Exiting")
-        eof[i+1] = true
         done += 1
+        println("master: EOF received.  done = $done")
       else
         println("master: $(msg.payload)")
       end #if EOF
@@ -42,18 +55,19 @@ function readit()
     end #if isready
   end #while
 end
-
-file = ["test.out","test1.out"]
-chan =[Channel(10) for i in 1:2]
-eof = [false for i in 1:2]
+file = ["test2.out","test3.out"]
+wchan =[Channel(0) for i in 1:2]
 for j in 1:2
-  Writer(chan[j],file[j]) #open the Writers
-  println("Writer $j has started.")
+  writer = Writer(wchan[j],file[j],j)
+  Threads.@spawn writer()
 end
 writeit()
-exit(0)
+println("\n***writeit() has finished***\n")
+
+file = ["test2.out","test3.out"]
+rchan =[Channel(0) for i in 1:2]
 for j in 1:2
-  Reader(chan[j],file[j]) #open the Readers
-  println("Reader $j has started.")
+  reader = Reader(rchan[j],file[j],j) #open the Readers
+  Threads.@spawn reader()
 end
 readit()

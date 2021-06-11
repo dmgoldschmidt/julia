@@ -239,4 +239,9 @@ Master process:
     2. If it's a reaad error from the input, try again
 3c. eof: send an exit message to every worker, wait for all channels to close, and then exit.
 
- 
+Fri Jun 11 00:51:14 2021
+I installed the julia package "Actors" which looks like an excellent way to do multi-threaded programming.
+I downloaded the manual.
+
+Fri Jun 11 16:19:42 2021
+I changed Reader and Writer from functions to functors.  Seems to work much better.  Both passed on test_fts.flowsets.jl

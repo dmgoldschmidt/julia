@@ -11,7 +11,7 @@ mutable struct OutputData #worker -> writer
   nrecs::Int64
 end
 
-@enum Ident OPEN=1 DATA=2 ERROR=3 EOF=4 EXIT=5 RAW=6 COMPLETE=7
+@enum Ident OPEN=1 DATA=2 ERROR=3 EOF=4 QUIT=5 RAW=6 ACK=7
 
 mutable struct ReaderMessage
   ident::Ident
@@ -35,44 +35,54 @@ mutable struct WriterMessage
   output::OutputData
 end
 
-function Reader(c::Channel,file::String)
-  stream = tryopen(file)
-  Threads.@spawn begin
-    t = Threads.threadid()
-    for line in eachline(stream)
-#      println("thread $t: sending $line")
-      put!(c,ReaderMessage(DATA,line)) 
-#      println("thread $t: DATA sent")
-    end
-    close(stream)
-#    println("thread $t: closed $file. Sending eof")
-    put!(c,ReaderMessage(EOF,""))
-#    println("thread $t: EOF sent")
-  end #@spawn
+struct Reader
+  chan::Channel
+  file::String
+  chan_no::Int64
 end
 
-function Writer(c::Channel,file::String)
-  stream = tryopen(file,"w")
-  println("opened $file")
-  Threads.@spawn begin
-    t = Threads.threadid()
-    println("writing to $file on thread $t")
-    while true
-      msg = take!(c)
-      println("thread $t: got $(msg.ident) $(msg.output.netident)")
-      exit(0)
-      if msg.ident == QUIT
-        break
-      else
-        println("thread $t: writing $(msg.output.netident)")
-        write(stream,"$(msg.output.netident)")
-        for x in msg.output.data; write(stream," $x"); end
-        write(stream,"\n")
-      end
+function (r::Reader)()
+  stream = tryopen(r.file)
+  t = Threads.threadid()
+  for line in eachline(stream)
+    #      println("thread $t: sending $line")
+    put!(r.chan,ReaderMessage(DATA,line)) 
+    #      println("thread $t: DATA sent")
+  end
+  close(stream)
+  #    println("thread $t: closed $file. Sending eof")
+  put!(r.chan,ReaderMessage(EOF,""))
+  #    println("thread $t: EOF sent")
+end
+
+struct Writer
+  chan::Channel
+  file::String
+  chan_no::Int64
+end
+
+function (writer::Writer)()
+  stream = tryopen(writer.file,"w")
+  t = Threads.threadid()
+  while true
+    println("thread $t: about to get OutputData from $(writer.chan)")
+    msg = take!(writer.chan)
+    println("thread $t: got $(msg.ident) $(msg.output.netident)")
+    if msg.ident == QUIT
+      println("thread $t: got QUIT")
+      close(stream)
+      println("thread $t: closed $(writer.file)")
+      msg.ident = ACK
+      put!(writer.chan,msg)
+      break
+    else
+      println("thread $t: writing $(msg.output.netident)")
+      line = "$(msg.output.netident)"
+      for x in msg.output.data; line = line*(" $x"); end
+      println(stream,line)
     end
-    close(stream)
-    println("thread $t: closed $file.")
-  end #@spawn
+  end #while
+  println("writer exiting")
 end
 
 # function Parser(c:Channel{ParserMessage})
