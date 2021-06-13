@@ -41,7 +41,7 @@ function readit()
   i = done = 0
   while done != 2
     if isready(rchan[i+1])
-#      println("master: waiting for DATA")
+      println("master: waiting for DATA")
       msg = take!(rchan[i+1])
       if msg.ident == EOF
         done += 1
@@ -67,6 +67,7 @@ println("\n***writeit() has finished***\n")
 file = ["test2.out","test3.out"]
 rchan =[Channel(0) for i in 1:2]
 for j in 1:2
+  println("Opening Reader $j")
   reader = Reader(rchan[j],file[j],j) #open the Readers
   Threads.@spawn reader()
 end

@@ -1,13 +1,29 @@
 include("util.jl")
 include("stats.jl")
 
+@enum Ident OPEN=1 DATA=2 ERROR=3 EOF=4 QUIT=5 RAW=6 ACK=7 
+
+mutable struct NetflowData #reader -> master
+  time::Int64 # rounded to nearest second
+  netident::String # enip|webip|webport
+  data::Array{Float64}
+  dir::Int8
+  function NetflowData(t::Int64 = 0,n::String = "",d::Array{Float64} = [0],d1 = 0)
+    return new(t,n,d,d1)
+  end
+end
+
+mutable struct WorkerMessage
+  ident::Ident
+  record::NetflowData
+end
+
 mutable struct OutputData #worker -> writer
   netident::String
   data::Array{Float64}
   nrecs::Int64
 end
 
-@enum Ident OPEN=1 DATA=2 ERROR=3 EOF=4 QUIT=5 RAW=6 ACK=7 
 
 mutable struct ReaderMessage
   ident::Ident
@@ -32,12 +48,14 @@ struct Reader
 end
 
 function (r::Reader)()
-  stream = tryopen(r.file)
   t = Threads.threadid()
+  println("opening file $r.file on thread $t")
+  stream = tryopen(r.file)
+  println("$(r.file) is open")
   for line in eachline(stream)
-    #      println("thread $t: sending $line")
-    put!(r.chan,ReaderMessage(DATA,line)) 
-    #      println("thread $t: DATA sent")
+    println("thread $t: sending $line")
+    put!(r.chan,ReaderMessage(DATA,line))
+    println("thread $t: DATA sent")
   end
   close(stream)
   #    println("thread $t: closed $file. Sending eof")
@@ -75,20 +93,6 @@ function (writer::Writer)()
   println("writer exiting")
 end
 
-mutable struct NetflowData #reader -> master
-  time::Int64 # rounded to nearest second
-  netident::String # enip|webip|webport
-  data::Array{Float64}
-  dir::Int8
-  function NetflowData(t::Int64 = 0,n::String = "",d::Array{Float64} = [0],d1 = 0)
-    return new(t,n,d,d1)
-  end
-end
-
-mutable struct WorkerMessage
-  ident::Ident
-  record::NetflowData
-end
 
 
 mutable struct Worker
@@ -98,15 +102,15 @@ mutable struct Worker
   min_recs::Int64
   worker_no::Int64
   active::Threads.Atomic{Bool}
-  buckets::Matrix{Float64}(8,15) # bucket boundaries
-  ref::Matrix{Float64}(8,16) # expected frac of total
+  buckets::Matrix{Float64} # bucket boundaries
+  ref::Matrix{Float64} # expected frac of total
 end
 
 mutable struct FlowsetData
   start_time::Int64 
   netident::String
   nrecs::Int64
-  hist::Matrix{Int64,8,16}
+  hist::Matrix{Int64}
   io_pattern::Int8
   
   function FlowsetData(time::Int64,ident::String)
@@ -162,7 +166,7 @@ function(w::Worker)()
         end
         current.hist[i,j] += 1
       end
-      dir = msg.record.data[1] > 0? 0 : 1 # 0 for input record, 1 for output
+      dir = msg.record.data[1] > 0 ? 0 : 1 # 0 for input record, 1 for output
       current.iopattern = ((current.iopattern << 1) | dir) & 15 #update io pattern
       current.hist[8,iopattern] += 1 
       current.nrecs += 1
