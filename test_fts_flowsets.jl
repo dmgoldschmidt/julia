@@ -26,13 +26,13 @@ function writeit()
     println("master: QUIT sent on channel $i")
   end
   for i in 1:2
-    println("master: waiting for ACK on channel $i")
+    println("master: waiting for EOF on channel $i")
     msg = take!(wchan[i])
-    if msg.ident != ACK
+    if msg.ident != EOF
       println(stderr,"comms error in writeit on channel $i.  Bailing out")
       exit(1)
     end
-    println("master: got ACK on channel $i") 
+    println("master: got EOF on channel $i") 
   end
   println("wrote $nlines")
 end
@@ -51,7 +51,7 @@ function readit()
       end #if EOF
     else
 #      println("channel $(i+1) not ready")
-      i = (i+1)%2
+      i = (i+1)%2 
     end #if isready
   end #while
 end

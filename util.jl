@@ -1,5 +1,6 @@
 #! /home/david/julia-1.5.3/bin/julia
 util_loaded = true
+#module util
 import GZip
 StreamType = Union{IOStream,Base.TTY,GZip.GZipStream}
 NumType = Union{Int64,Float64}
@@ -116,4 +117,4 @@ function covariance(W::Welford)
   return W.weight == 0 ? W.S2 : (1.0/W.weight).*W.S2
 end
 
-    
+#end #module util    

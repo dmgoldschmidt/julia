@@ -245,3 +245,65 @@ I downloaded the manual.
 
 Fri Jun 11 16:19:42 2021
 I changed Reader and Writer from functions to functors.  Seems to work much better.  Both passed on test_fts.flowsets.jl
+I also modified the above outline for get_fts_flowsets as follows:
+
+reader messages:
+ident: "DATA", payload = string (one line from the file)
+       direction: reader -> master
+ident: "EOF", no payload
+       direction: reader -> master
+ident: ERROR, payload = error message/data
+       direction: reader -> master
+Description: Reader waits for the "open" message, opens the file and enters an infinite loop "put"-ing data
+messages to the master. At eof, reader closes the file, puts the eof message, and exits
+
+parser messages:
+ident: "RAW": payload = line from file
+       direction: master -> parser
+ident: "DATA": payload = NetflowData struct
+       direcgtion: parser -> master
+ident: "ERROR: payload = error message/data (bad format of line)
+       direction: parser -> master
+       
+worker messages:
+ident: "OPEN" payload = fts duration, min no. of records to write, writer channel
+ident: "DATA", payload = netident, data from parser
+       direction: master -> worker 
+ident: "ERROR" (overflow error -- fatal)
+       direction: worker -> master      
+ident: "QUIT"  worker writes data and exits
+       direction: master -> worker
+               
+Description: Each worker waits for an OPEN, DATA, or QUIT message
+OPEN: the data in the payload is stored, the status is set to "active", and the record count is set to zero.
+DATA: If the current record count is zero,
+the histogram matrix is cleared, the net_ident is stored, and the record count is set to 1. Then the net_ident and time
+are checked. If the net_ident doesn't check, an overflow message is returned.  Otherwise, if time has expired
+and the record count exceeds the minimum, the chi-squares are computed and the output is "put"on the write channel.
+Then the histograms, record count, and net_ident are cleared.  If time has not expired, the record count and
+the histograms are incremented. 
+QUIT: the write/clear process is executed, the status is set to "inactive" and the worker exits. 
+
+writer messages:
+ident: "DATA", payload = data to write
+       direction: worker -> writer or (master -> writer)
+ident: QUIT
+       direction: master->writer (close the file, send EOF and exit)
+ident: EOF
+       direction: writer -> master
+ident: ERROR, payload = error message/data
+       direction: writer -> worker or master
+
+Master process:
+1. Start all the tasks.
+2. Enter an infinite loop, waiting on the reader channel for a DATA, EOF, or ERROR message
+2a. DATA:
+    1. call the parser and get the time, net_ident, and data fields
+    2. look up the net_ident to get the connection no. (a unique number which increments with each new net_ident)
+    3. the worker no. is the connection no. modulo the total number of workers
+    4. feed the parser output to the appropriate worker
+2b. ERROR:
+    2. try again or quit
+
+2c. EOF: send a QUIT message to every worker and the writer, wait for all channels to close, and then exit.
+
