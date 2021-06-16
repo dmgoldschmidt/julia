@@ -307,3 +307,15 @@ Master process:
 
 2c. EOF: send a QUIT message to every worker and the writer, wait for all channels to close, and then exit.
 
+Mon Jun 14 16:59:30 2021
+While coding up the Worker functor, I noticed that there's a bug in the original get_fts_flowsets logic. Namely, nrecs
+depends on whether it's an input parameter or an output parameter.  That could explain why all my tail probs
+seem so small in the C++ version (nrecs is roughly twice the size it should be)
+
+Mon Jun 14 18:44:17 2021
+OK, I've got something coded in test_fts_flowsets to test the Worker functor.  I'll try it after lunch.
+
+Wed Jun 16 23:40:21 2021
+Well, I've tried just about everything I can think of, and the code just hangs.  Looks like a deadlock
+somewhere, but I've also noticed that I'm not getting any error messages from code running on a thread.
+So I'm committing what I've got now, and moving on.
