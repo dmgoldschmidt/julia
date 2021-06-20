@@ -4,25 +4,43 @@
 #   results::Channel{Tuple}
 # end
 
-
-const jobs = [Channel{Int}(32) for i in 1:4]
+include("util.jl")
+stream = open("print.out","w";lock = true)
+const jobs = [Channel{Int64}(32) for i in 1:4]
 const results = Channel{Tuple}(32) #[Channel{Tuple}(32) for i in 1:4]
+
+done = Vector{Bool}(undef,4)
 for i in 1:4
+  done[i] = false
   println("jobs $i: $(jobs[i])")
 end
 
-
-function worker(i,jobs) #(job_no::Int)
+function writer(stream)
   t = Threads.threadid()
-  println("Worker $i (channel $jobs) on thread $t waiting for jobs")
+  println("writer on thread $t waiting for output")
+  while true
+    job_no,exec_time = take!(results)
+    println(stream,"job $job_no finished in $(round(exec_time; digits=2)) seconds")
+  end
+end
+Threads.@spawn writer(stream)
+
+function worker(i) #(job_no::Int)
+  t = Threads.threadid()
+  my_jobs = jobs[i]
+#  my_signal = signals[i]
+  println("Worker $i (channel $my_jobs) on thread $t waiting for jobs")
   flush(stdout)
 #  exit(0)
-  for job in jobs 
+  for job in my_jobs
+    if job == 0; break; end  #quit message
     exec_time = rand()
     sleep(exec_time)
     put!(results,(job,exec_time))
     println("job $job was sent by worker $i")
   end
+  done[i] = true #signal master that we got the quit signal
+  println("Worker $i is done")
 end
 
 function send_jobs(n)
@@ -39,19 +57,37 @@ println("all jobs sent")
   
 for i in 1:4
   println("starting worker $i")
-  Threads.@spawn worker(i,jobs[i])
+  Threads.@spawn worker(i)
   println("worker $i started")
 end
 
-println("all workers launched") 
-
-while n > 0
-  job_no, exec_time = take!(results)
-  println("job $job_no finished in $(round(exec_time; digits=2)) seconds")
-  global n = n-1
-end
+println("all workers launched")
 for i in 1:4
-  close(jobs[i])
+  put!(jobs[i],0)
+  println("sent quit message to worker $i")
+end
+#sleep(10)
+# if isready(signals[1])
+#   println("worker 1 has quit")
+# end
+# exit(0)
+
+
+nquit = 0
+ntries = 0
+
+while nquit < 4 && ntries < 10
+  global ntries = ntries + 1
+  for i in 1:4
+    if done[i]
+      println("task $i has finished")
+      close(jobs[i])
+      global nquit = nquit + 1
+    else
+      println("task $i is not finished")
+      sleep(1)
+    end
+  end
 end
 close(results)
 
