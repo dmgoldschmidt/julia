@@ -319,3 +319,17 @@ Wed Jun 16 23:40:21 2021
 Well, I've tried just about everything I can think of, and the code just hangs.  Looks like a deadlock
 somewhere, but I've also noticed that I'm not getting any error messages from code running on a thread.
 So I'm committing what I've got now, and moving on.
+
+Fri Jun 18 21:19:35 2021
+Well, I changed the test3.jl code to be exactly the same as the docs, and it
+ran, both using async (1 thread) and spawn (4 threads).  Then I modified
+worker to take a worker number and a channel, and changed jobs to an array
+of 4 channels.  I spawned worker with a calling sequence of i,jobs[i] and it
+still worked.  Next: launch a writer and send the output from the workers
+to the writer.
+
+Mon Jun 21 21:20:54 2021
+OK, I launched a writer, giving it an open stream, and it received output from 4 workers
+and printed it.  Not only than, I enclosed everything in a function main() .... end to
+get out of global scope and more closely approximate the real code, and miracle!  everything
+still worked.  Next: modify get/test fts_flowsets to operate the same way.
