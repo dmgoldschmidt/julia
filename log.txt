@@ -330,6 +330,11 @@ to the writer.
 
 Mon Jun 21 21:20:54 2021
 OK, I launched a writer, giving it an open stream, and it received output from 4 workers
-and printed it.  Not only than, I enclosed everything in a function main() .... end to
+and printed it.  Not only that, I enclosed everything in a function main() .... end to
 get out of global scope and more closely approximate the real code, and miracle!  everything
 still worked.  Next: modify get/test fts_flowsets to operate the same way.
+
+Tue 22 Jun 2021 02:02:41 PM PDT
+I've deleted test_fts_flowsets and moved get_fts_flowsets.jl to fts_flowsets.jlh.  Going forward, I'm going
+to use .jlh for julia header files that are not intended to be executed, but only included.  fts_flowsets.jl
+has been (preliminarily) coded, except for the parser.
