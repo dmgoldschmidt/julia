@@ -1,0 +1,214 @@
+#=
+Development notes:
+Mon Jun 21 23:30:16 2021
+I've discarded the functor idea in favor of an Array of Channels,
+and passing parameters to each task.
+
+Modified reader calling seq. to take stream,eof::Ref{Bool}
+(I tested the Ref{Bool} idea in the REPL and it worked)
+Modified writer calling seq to take stream, ack_quit::RefBool to
+acknowledge the quit message.  If this doesn't work, I'll use
+a separate Channel to send a quit message which master can 
+wait for.
+
+=#
+
+include("util.jl")
+include("stats.jl")
+
+@enum Ident OPEN=1 DATA=2 ERROR=3 EOF=4 QUIT=5 RAW=6 
+
+
+mutable struct ReaderMessage
+  ident::Ident
+  payload::String
+end
+
+
+function reader(stream::IOStream,eof::Ref{Bool})
+  t = Threads.threadid()
+  for line in eachline(stream)
+    println("thread $t: sending $line")
+    put!(reader_chan,ReaderMessage(DATA,line))
+    println("thread $t: DATA sent")
+  end
+  close(stream)
+  println("thread $t: closed $file. Sending eof")
+  eof[] = true
+  println("thread $t: EOF sent")
+end
+
+mutable struct OutputData #worker -> writer
+  netident::String
+  data::Array{Float64}
+  nrecs::Int64
+end
+
+
+
+mutable struct WriterMessage
+  ident::Ident
+  output::OutputData
+end
+
+
+function writer(stream::IOStream,ack_quit::Ref{Bool})
+  t = Threads.threadid()
+  while true
+    #println("writer on thread $t: waiting for OutputData")
+    msg = take!(writer_chan)
+    println("thread $t: writer got $(msg.ident) $(msg.output.netident)")
+    if msg.ident == QUIT
+      println("thread $t: writer got QUIT")
+      close(stream)
+      #println("thread $t: closed $(writer.file)")
+      ack_quit[] = true
+      break
+    else
+      println("thread $t: writing $(msg.output.netident)")
+      line = "$(msg.output.netident)"
+      for x in msg.output.data; line = line*(" $x"); end
+      println(stream,line*(" $(msg.nrecs)\n"))
+    end
+  end #while
+  println("writer exiting")
+end
+
+mutable struct NetflowData #parser -> master
+  time::Int64 # rounded to nearest second
+  netident::String # enip|webip|webport
+  data::Vector{Float64}
+  dir::Int64
+  function NetflowData(t::Int64 = 0,n::String = "",d::Matrix{Float64} = zeros(8,16),d1 = 0)
+    return new(t,n,d,d1)
+  end
+end
+
+    mutable struct ParserMessage #parser -> master
+  ident::Ident
+  data::NetflowData
+end
+
+function parser(line::String)
+         
+
+
+end
+
+
+mutable struct WorkerMessage
+  ident::Ident
+  record::NetflowData
+end
+
+
+mutable struct WorkerData
+  worker_no::Int64
+#  master::Channel
+#  writer::Channel
+  duration::Int64
+  min_recs::Int64
+#  active::Signal
+#  ack::Signal
+  buckets::Matrix{Float64} # bucket boundaries
+#  ref::Matrix{Float64} # expected frac of total
+end
+
+mutable struct CurrentValues
+  start_time::Int64 
+  netident::String
+  nrecs::Int64
+  hist::Matrix{Int64}
+  io_pattern::Int64
+  function CurrentValues(t,i, h = ones(Int64,8,16), io = 0) #constructor
+    #println("constructing FlowsetData($time,$ident)")
+    return new(t,i,h,io) #basic flattening for the counts
+  end
+end
+start = (1,4)
+stop = (3,7)
+function Worker(w::WorkerData)
+  t = Threads.threadid()
+  #println("worker $(w.worker_no) on thread $t")
+  w.active = Signal(false)
+  #println("worker $(w.worker_no): set active signal to false")
+  current_data = 0#FlowsetData(0,"worker $(w.worker_no)",ones(Int64,8,16),0) # initialize current values
+  #println("worker $(w.worker_no): entering while loop")
+  while true
+    #println("worker $(w.worker_no) on thread $t: waiting for message")
+    msg = take!(worker_chan[w.worker_no])
+    
+    if msg.ident == OPEN # open a new flowset
+      #println("worker $(w.worker_no) on thread $t: got $(msg.ident). active = $(w.active())")
+      if w.active() # an active worker can't be OPENed.  Must expire or get QUIT first
+        println("worker $w.worker_no: got OPEN message while active.  Bailing out")
+        exit(0)
+      else
+        time = msg.record.time
+        netident = msg.record.netident
+        #println("initializing time = $time, netident = $netident")
+        current_data = FlowsetData(time,netident) # inactive, so re-initialize
+        w.active = Signal(true)
+      end
+      continue #while true
+    end
+    
+    if msg.ident == DATA || msg.ident == QUIT
+      if !w.active(); continue; end  #ignore 
+
+    elseif msg.ident == QUIT || (msg.ident == DATA && msg.record.time - current_data.start_time > current_data.duration)   # flowset has expired
+      if current_data.nrecs >= w.min_recs #OK to write (if not, just ignore)
+        line = netident
+        chi_sq = Array{Float64}(undef,8)
+        for i in 1:8 #convert counts to tail probs for each feature
+          bucket_sum = 1 #flattening
+          for j in 1:16; bucket_sum += hist[i,j]; end
+          for j in 1:16
+            expected = bucket_sum/16.0 #= reference distro is uniform. The bucket sizes are non-uniform in general. They
+                                         are computed by a separate function making the overall distribution uniform, and 
+                                         they are set by the master task when the workers are launched. NOTE: this doesn't
+                                         work for iopattern! =#   
+            x = hist[i,j] - expected
+            chi_sq[i] = stats.gammaq(15,(x*x)/expected)
+          end #for j
+          line = line*" $chi_sq[i]" # add to the output line
+        end #for i
+        line = line*"\n"
+        output = OutputData(current_data.netident,line,nrecs)
+        put!(w.writer,WriterMessage(DATA,output)) # send it to the writer
+      end #output written
+      w.active = Signal(false)
+      if msg.ident == QUIT
+        w.ack[] = Signal(true) # acknowledge quit
+        break
+      end # my_worker will exit
+
+    else # time has not expired.  Update current_data.hist from NetflowData
+      dir = msg.record.dir # direction of flow: 1 = input, 2 = output
+      for i in start[dir]:stop[dir] # input record = 1,2,3.  output record = 4,5,6,7
+        j = 0
+        while msg.record.field[i] > w.buckets[j] && j < 16 # find the bucket
+          j += 1
+        end
+        current_data.hist[i,j] += 1 #update the bucket count
+      end
+      current_data.iopattern = ((current_data.iopattern << 1) | (dir-1)) & 15 #update io pattern by one bit (dir-1) after left shift 1 
+      current_data.hist[8,current_data.iopattern] += 1 
+      current_data.nrecs += 1
+    end # msg.ident == DATA
+  end #while true
+end #function
+  
+    
+
+    
+    
+      
+        
+        
+
+
+
+
+
+
