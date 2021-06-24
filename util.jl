@@ -44,7 +44,7 @@ function myparse(T::DataType, s::String)
   try
     x = parse(T,s)
   catch
-    println(stderr,"Can't parse $s.  Bailing out.")
+    println(stderr,"Can't parse $s as a $T.  Bailing out.")
     exit(1)
   end
   return x
