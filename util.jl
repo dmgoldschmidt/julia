@@ -10,10 +10,9 @@ struct my_round
   digits::Int64
 end
 function (r::my_round)(x::Float64)
-  return round(x,digits=r.digits)
+  return round(x, sigdigits=r.digits)
 end
 
-  
 function is_dotted_quad(s::StringType)
   fields = split(s,".")
   if length(fields) != 4; return false; end
