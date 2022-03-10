@@ -344,3 +344,7 @@ In the thick of debugging.  get_buckets works, and there's a fake buckets file b
 properly, reads a line of test output from the channel, and writes it out.  Next up is worker.  Here
 I launch 2 workers and return, but neither one actually prints a debuggining message that it has been launched.
 Not sure how this can happen.
+
+Thu Mar 10 17:30:16 2022
+I have a new git setup which just did a pull from github.  Now I'll add this file
+and try a push.
