@@ -58,19 +58,19 @@ end
 
 function add_row(a::AtA, r::Vector{Float64})
     a.v  .= r;  #copy v to r (temporary space -- r will be zeroed out below)
-    println("adding row: $(a.v)");
+    println("ata.add_row: adding row: $(a.v)");
     for i in 1:a.dim
         reset(a.g,a.C[i,i],a.v[i])
-        println("a.g: $(a.g)")
-        println("a.v: $(a.v)")
+        println("begin add_row at i = $i, a.g: $(a.g)\na.C[$i,$i]: $(a.C[i,i])\na.v: $(a.v)\n")
+#        println("a.v: $(a.v)")
  #       x = zeros(a.dim+1-i)
  #      y = zeros(a.dim+1-i)
  #       x,y = rotate(a.g,i,a.v[i:a.dim], a.C[i,i:a.dim])
  #       a.v[i:a.dim] .= x
  #       a.C[i,i:a.dim] .= y
-        a.v[i:a.dim], a.C[i,i:a.dim] = rotate1(a.g,a.v[i:a.dim], a.C[i,i:a.dim])
+        a.C[i,i:length(r)],a.v[i:length(r)] = rotate1(a.g,a.C[i,i:length(r)],a.v[i:length(r)])
         println("after Givens.rotate at i= $i: a.v = $(a.v)\na.C = $(a.C)")
-        exit()
+ #       exit()
     end
 end
 
@@ -99,17 +99,18 @@ function ata_main(cmd_line = ARGS)
     t = atan(2.0)
     println("Check: $(sin(t)) = $(ata.g.sin_t),  $(cos(t)) = $(ata.g.cos_t)");
     Random.seed!(1234)
-    println("seed returned")
+#    println("seed returned")
 #    d = Normal()
  #   Normal(0,1.0)
  #   println("mean(d) = $(mean(d))")
     println("begin add_row test\n C: $(ata.C)")
-    A = randn(dim,dim)
+    A = randn(2*dim,dim)
     println("A:\n $A")
-    for i in 1:dim
+    for i in 1:2*dim
         add_row(ata,A[i,1:dim])
     end
     println("after test, C:\n $(ata.C)\nC^tC:\n $( transpose(ata.C)*ata.C)")
+    println("A:\n$A\nAtA:\n $(transpose(A)*A)")
 end
 
 #------------------------------------------------------
