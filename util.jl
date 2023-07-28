@@ -1,4 +1,3 @@
-#! /home/david/julia-1.5.3/bin/julia
 util_loaded = true
 #module util
 import GZip
@@ -10,7 +9,19 @@ struct my_round
   digits::Int64
 end
 function (r::my_round)(x::Float64)
-  return round(x, sigdigits=r.digits)
+  return round(x ; sigdigits=r.digits)
+end
+
+function printmat(M::Matrix{Float64}, ndigits = 5)
+    rnd = my_round(ndigits)
+    nrows = size(M)[1]
+    ncols = size(M)[2]
+    for i in 1:nrows
+        for j in 1:ncols
+            print("$(rnd(M[i,j])) ")
+        end
+        print("\n")
+    end
 end
 
 function is_dotted_quad(s::StringType)
@@ -39,6 +50,7 @@ function tryopen(filename::String, mode::String = "r")
 end
 
 function myparse(T::DataType, s::String)
+  if T == String || T == Any;return s;end
   x = 0
   try
     x = parse(T,s)

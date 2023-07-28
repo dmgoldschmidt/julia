@@ -1,4 +1,4 @@
-#! /home/david/julia-1.5.3/bin/julia
+#! /home/parallels/julia-1.9/1/bin/julia
 """
 command line(s) parses s = Array{String} whose entries are strings that we call fields.
 The default argument is ARGS, which gives the command line by which the enclosing julia 
@@ -29,20 +29,29 @@ the order of the inputs and just receives a pair of String Arrays.  Or the calle
 function "get_vals" (see below).
 
 However, there is an ambiguous parse, namely when, e.g., the
-parser encounters "-f file" it means that the option "f" has the value "file",
+parser encounters "-f file" or "--f file", it means that the option "f" has the value "file",
 alothough it might mean (but doesn't) that the option "f" has no associated value and the
 value "file" has no associated option because both can legally appear as singletons. 
 It is up to the user to disambiguate these two cases.
 
 There is a convenience function get_vals which accepts a Dict{String,Any} of default (option,value) pairs
-and for each option a)chooses the longest matching prefix on the command line, and b) replaces the default 
-value with the corresponding command line value.  If no match is found, the default value is left unchanged.
+and for each option:
+a) chooses the longest matching prefix of an option name found on the command line, and 
+b) replaces the default value with the corresponding command line value.  If no match is found, the 
+default value is left unchanged.
 If a match is found, but the corresponding value cannot be parsed, the default value is replaced by nothing.
 Thus the programmer can specify long options while the user only needs to type a unique prefix.  For example, 
 the programmer can ask for the value of the option "xaxis" and the user can type -x3.4 (or -x 3.4, or --x 3.4 
-or --xaxis=3.4) 
+or --xaxis=3.4). 
+Dictionary entries can themselves be Vectors.  A typical entry might be "A"=>FLoat64[].  To
+get command line values into a Vector A, you would just space them out immediately following "--A" like this: 
+"--A 1.0 2.3 3.4".  Then if your dictionary is named defaults, the julia code A = defaults["A"] would set A = 
+[1.0, 2.3, 3.4].   In general, if a command line option is matched to a dictionary key (say "A")  whose default value is
+an Array, all optionless values immediately following "--A" on the command line, up to either another option or
+the end of the command line are parsed as eltype(A) and pushed into the given default Array.
 """
 CommandLine_loaded = true
+include("/home/parallels/code/julia/util.jl")
 
 struct CommandLine
   option::Array{String}
@@ -125,34 +134,77 @@ function command_line(s::Array{String} = ARGS)
   return c
 end
 
-StringType = Union{String,SubString{String}}
+# StringType = Union{String,SubString{String}}
+# function get_vals(defaults::Dict{String,Any}, s::Array = ARGS, c::CommandLine=CommandLine([],[]))
+#   if length(c.option) == 0 && length(c.value) == 0
+#     c = command_line(s)
+#   end
+#   for option in keys(defaults)
+#     i = 0
+#     best_match = Int64[0,0]
+#     for opt in c.option
+#       i += 1
+#       m = match(Regex("^"*opt),option) # is opt a prefix of option? 
+#       if m != nothing
+#         if length(m.match) > best_match[1] #this is the longest match so far
+#           println("matched $opt with $option, length $(length(m.match))")
+#           best_match[1] = length(m.match)
+#           best_match[2] = i 
+#         end
+#       end
+#     end
+#     if best_match[1] != 0
+# #      println("returning $(c.value[best_match[2]])")
+# #      println("parsing for type $(typeof(defaults[option]))")
+#       if typeof(defaults[option]) == String
+#         defaults[option] = c.value[best_match[2]]
+#       elseif typeof(defaults[option]) == Bool
+#         defaults[option] = true
+#       else
+#         defaults[option] = tryparse(typeof(defaults[option]),c.value[best_match[2]])
+#         # NOTE: value = nothing if we find a match to option but can't parse the string 
+#       end
+#     end
+#   end
+#   return c
+# end
 function get_vals(defaults::Dict{String,Any}, s::Array = ARGS, c::CommandLine=CommandLine([],[]))
   if length(c.option) == 0 && length(c.value) == 0
     c = command_line(s)
   end
-  for option in keys(defaults)
+  for key in keys(defaults)
     i = 0
     best_match = Int64[0,0]
     for opt in c.option
       i += 1
-      m = match(Regex("^"*opt),option) # is opt a prefix of option? 
+      m = match(Regex("^"*opt),key) # is opt a prefix of key? 
       if m != nothing
         if length(m.match) > best_match[1] #this is the longest match so far
-          println("matched $opt with $option, length $(length(m.match))")
+          println("matched $opt with $key, length $(length(m.match))")
           best_match[1] = length(m.match)
           best_match[2] = i 
         end
       end
     end
     if best_match[1] != 0
-#      println("returning $(c.value[best_match[2]])")
-#      println("parsing for type $(typeof(defaults[option]))")
-      if typeof(defaults[option]) == String
-        defaults[option] = c.value[best_match[2]]
-      elseif typeof(defaults[option]) == Bool
-        defaults[option] = true
+      println("match of length $(best_match[1]) for key $key")
+      println("parsing for type $(typeof(defaults[key]))")
+      if typeof(defaults[key]) == String
+        defaults[key] = c.value[best_match[2]]
+      elseif typeof(defaults[key]) == Bool
+        defaults[key] = true
+      elseif typeof(defaults[key]) <: Array
+        j = best_match[2]
+        println("defaults[$key] at $j: ",defaults[key])
+        while true # load successive optionless values into the Array
+          push!(defaults[key], myparse(eltype(defaults[key]),c.value[j]))
+          j += 1
+          println("testing option[$j]")
+          if j > length(c.option) || c.option[j] != ""; break;end  # if the next option isn't blank, we're done
+        end
+        println("defaults[$key]: ",defaults[key])
       else
-        defaults[option] = tryparse(typeof(defaults[option]),c.value[best_match[2]])
+        defaults[key] = tryparse(typeof(defaults[key]),c.value[best_match[2]])
         # NOTE: value = nothing if we find a match to option but can't parse the string 
       end
     end
@@ -171,14 +223,15 @@ end
 # test(r)
 # println("now s = ",r[])
 # exit(0)
-function test_cmd_line()
-#  c = command_line()
-  defaults = Dict{String,Any}("int" => 1, "float" => 2.0, "file" => "none")
+function test_cmd_line(s)
+  A = [];
+  defaults = Dict{String,Any}("int" => 1, "float" => 2.0, "file" => "none", "Array" => A)
   println("defaults: ",defaults)
-  c = get_vals(defaults,CommandLine([],[]),["-f","--g","-h"])
+  c = get_vals(defaults, s)
   println("options: ",c.option)
   println("values: ",c.value)
   println("\n")
-  println("defaults are now: $defaults")
+  int = defaults["int"]; float = defaults["float"]; file = defaults["file"];A = defaults["Array"]
+  println("defaults are now: $int, $float, $file, $A")
 end
 

@@ -344,3 +344,18 @@ In the thick of debugging.  get_buckets works, and there's a fake buckets file b
 properly, reads a line of test output from the channel, and writes it out.  Next up is worker.  Here
 I launch 2 workers and return, but neither one actually prints a debuggining message that it has been launched.
 Not sure how this can happen.
+
+----------------------------------
+Sat Jul 22 13:31:53 2023
+I've returned to julia programming.  Already wrote a struct AtA, but haven't written AtA.reduce yet.  AtA.add_row
+seems to be running.  The result is the upper triangular Cholesky matrix.  NOTE:  I don't need to save the row rotations
+because they disappear when I compute C^tC.  Actually, I rarely need to actually compute C^C, because I can compute the probability of any vector v via p = (Cv)^t(Cv).
+
+For AtA.reduce, I need to first rotate AtA.C to upper bi-diagonal form.  This  basically consists of  column rotations,
+with an occasional row rotation to correct for a sub-diagonal non-zero.  Then I need to iteratively zero out the
+superdiagonal.  The resulting diagonal matrix contains the square-roots of the eigenvectors of C^tC and resulting
+matrix of column rotations ("V" in the UAV notation) has the eigenvectors of C^tC as its corresponding columns.
+
+Thu Jul 27 17:15:10 2023
+OK, I've completed coding  reduce step 1 (rotate to upper bi-diagonal form) and it is working.  I've coded step 2
+(iterate to diagonal form) but no checkout yet.

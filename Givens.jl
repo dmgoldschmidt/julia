@@ -51,10 +51,11 @@ end
 
 function rotate1(g::Givens, u_a::Vector{Float64}, u_b::Vector{Float64})
     @assert(length(u_a) == length(u_b))
-    println("g.rotate1: u_a, u_b = $u_a, $u_b")
+    println("Givens/54: u_a, u_b = $u_a, $u_b")
     x = [g.cos_t * u_a[j] + g.sin_t * u_b[j] for j in 1:length(u_a)] 
     y = [-g.sin_t * u_a[j] + g.cos_t * u_b[j] for j in 1:length(u_b)]
-    println("g.rotate1: x = $(g.cos_t) * $u_a + $(g.sin_t) * $u_b\ny = $(-g.sin_t) * $u_a + $(g.cos_t) * $u_b")
+    println("returning from g.rotate1: x =  $x, y = $y")
+    # $(g.cos_t) * $u_a + $(g.sin_t) * $u_b\ny = $(-g.sin_t) * $u_a + $(g.cos_t) * $u_b")
     return x,y
 end
 
