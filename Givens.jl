@@ -13,7 +13,7 @@ mutable struct Givens
 end
 
 function reset(g::Givens, a0::Float64,b0::Float64)
-    println("Givens: reset to a0 = $a0, b0 = $b0")
+#    println("Givens: reset to a0 = $a0, b0 = $b0")
     if(a0 == 0)
         if(b0 == 0)return
         end
@@ -21,10 +21,10 @@ function reset(g::Givens, a0::Float64,b0::Float64)
     a = a0*a0
     b = b0*b0
     c0::Float64 = abs(b < a ? a0*sqrt(1+b/a) : b0*sqrt(1+a/b)) # numerical hygene for c = sqrt(a+b)
-    println("c0 =$c0")
+#    println("c0 =$c0")
     g.sin_t = b0/c0
     g.cos_t = a0/c0
-    println("exit Givens reset with g = $g, g.sin_t = $(g.sin_t), g.cos_t = $(g.cos_t)")
+#    println("exit Givens reset with g = $g, g.sin_t = $(g.sin_t), g.cos_t = $(g.cos_t)")
 #    exit()
 end
 
@@ -51,10 +51,10 @@ end
 
 function rotate1(g::Givens, u_a::Vector{Float64}, u_b::Vector{Float64})
     @assert(length(u_a) == length(u_b))
-    println("Givens/54: u_a, u_b = $u_a, $u_b")
+#    println("Givens/54: u_a, u_b = $u_a, $u_b")
     x = [g.cos_t * u_a[j] + g.sin_t * u_b[j] for j in 1:length(u_a)] 
     y = [-g.sin_t * u_a[j] + g.cos_t * u_b[j] for j in 1:length(u_b)]
-    println("returning from g.rotate1: x =  $x, y = $y")
+#    println("returning from g.rotate1: x =  $x, y = $y")
     # $(g.cos_t) * $u_a + $(g.sin_t) * $u_b\ny = $(-g.sin_t) * $u_a + $(g.cos_t) * $u_b")
     return x,y
 end

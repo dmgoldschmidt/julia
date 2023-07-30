@@ -1,4 +1,3 @@
-#! /home/parallels/julia-1.9/1/bin/julia
 """
 command line(s) parses s = Array{String} whose entries are strings that we call fields.
 The default argument is ARGS, which gives the command line by which the enclosing julia 

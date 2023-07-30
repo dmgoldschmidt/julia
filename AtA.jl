@@ -57,11 +57,11 @@ end
 
 function add_row(a::AtA, r::Vector{Float64})
     a.v  .= r;  #copy v to r (temporary space -- r will be zeroed out below)
-    println("ata.add_row: adding row: $(a.v)");
+#    println("ata.add_row: adding row: $(a.v)");
     for i in 1:a.dim
         reset(a.g,a.C[i,i],a.v[i])
         rnd = my_round(3)
-        println("begin add_row at i = $i, a.g: $(a.g)\na.C[$i,$i]: $(rnd(a.C[i,i]))\na.v: $(a.v)\n")
+#        println("begin add_row at i = $i, a.g: $(a.g)\na.C[$i,$i]: $(rnd(a.C[i,i]))\na.v: $(a.v)\n")
 #        println("a.v: $(a.v)")
  #       x = zeros(a.dim+1-i)
  #      y = zeros(a.dim+1-i)
@@ -69,15 +69,13 @@ function add_row(a::AtA, r::Vector{Float64})
  #       a.v[i:a.dim] .= x
  #       a.C[i,i:a.dim] .= y
         a.C[i,i:length(r)],a.v[i:length(r)] = rotate1(a.g,a.C[i,i:length(r)],a.v[i:length(r)])
-        println("after Givens.rotate at i= $i: a.v = $(a.v)\na.C = $(a.C)")
+ #       println("after Givens.rotate at i= $i: a.v = $(a.v)\na.C = $(a.C)")
  #       exit()
     end
 end
 
 function reduce(a::AtA, max_iters::Int64 = 10, eps::Float64 = 1.0e-8)
-    C_orig = zeros(a.dim,a.dim)
-    C_orig .= a.C # save original cholesky
-    println("Begin reduce with C-matrix:\n"); printmat(a.C)
+    println("Begin reduce with max_iters = $max_iters, eps = $eps, C-matrix:\n"); printmat(a.C)
     # step 1: rotate to upper bidiagonal form
     d = a.dim
     for i in 1:d-2
@@ -87,13 +85,13 @@ function reduce(a::AtA, max_iters::Int64 = 10, eps::Float64 = 1.0e-8)
             a.C[i:d,j-1],a.C[i:d,j] =  rotate1(a.g,a.C[i:d,j-1],a.C[i:d,j]) 
             a.U[1:d,j-1],a.U[1:d,j] = rotate1(a.g,a.U[1:d,j-1],a.U[1:d,j])
             #NOTE: accumulate the column rotations in U
-             println("C-matrix after col rotation only at step (i=$i,j=$j):\n"); printmat(a.C)
+#             println("C-matrix after col rotation only at step (i=$i,j=$j):\n"); printmat(a.C)
         
             if a.C[j,j-1] != 0
                 # now rotate rows j-1 & j to zero out C[j,j-1] which was just set to a non-zero value above
                 reset(a.g, a.C[j-1,j-1],a.C[j,j-1])
                 a.C[j-1,j-1:d],a.C[j,j-1:d] = rotate1(a.g,a.C[j-1,j-1:d],a.C[j,j-1:d])
-                println("C-matrix after row rotation at step (i=$i,j=$j):\n"); printmat(a.C)
+  #              println("C-matrix after row rotation at step (i=$i,j=$j):\n"); printmat(a.C)
                 #NOTE: row rotations do not need be saved
             end #if
         end #for j
@@ -114,7 +112,7 @@ function reduce(a::AtA, max_iters::Int64 = 10, eps::Float64 = 1.0e-8)
                 done = false
             end #if
         end #for j
-        println("C-matrix after step2a:\n"); printmat(a.C)
+ #       println("C-matrix after step2a:\n"); printmat(a.C)
         if !done
             done = true
             for i in 1:d-1
@@ -126,21 +124,23 @@ function reduce(a::AtA, max_iters::Int64 = 10, eps::Float64 = 1.0e-8)
                 end #if
             end #for i
         end #if !done
-        println("C-matrix after iteration $niters in step 2b:\n"); printmat(a.C)
+ #       println("C-matrix after iteration $niters in step 2b:\n"); printmat(a.C)
         niters += 1
     end #while.  Back to the top if not done
-    println("U^tU:\n"); printmat(transpose(a.U)*a.U)
-    orig_CtC = transpose(C_orig)*C_orig
-    println("unreduced C^tC-matrix:\n"); printmat(orig_CtC)
-    println("U^tC^tCU:\n") ; printmat(transpose(a.U)*orig_CtC*a.U)
-    println("a.C^ta.C:\n"); printmat(transpose(a.C)*a.C)
+    println("exiting reduce with niters = $niters")
 end #function
 
 function ata_main(cmd_line = ARGS)
+    #=  
+1. Generate a random matrix A of size 2*dim x dim
+2. Call add_row with each row of A to accumulate Cholesky(A^tA)
+3. Call reduce to compute eigenvalues, vectors of A^tA
+=# 
+                                     
     println("begin ata_main")
     defaults = Dict{String,Any}(
     "dim"=>4,
-     "max_iters"=>2,
+     "max_iters"=>200,
       "eps"=>1.0e-8
     )
     cl = get_vals(defaults,cmd_line) # replace defaults with command line values
@@ -162,10 +162,18 @@ function ata_main(cmd_line = ARGS)
     for i in 1:2*dim
         add_row(ata,A[i,1:dim])
     end
+    C_orig = zeros(ata.dim,ata.dim)
+    C_orig .= ata.C # save original cholesky
     println("after test, C:\n $(ata.C)\nC^tC:\n $( transpose(ata.C)*ata.C)")
     println("A:\n$A\nAtA:\n $(transpose(A)*A)")
     println("------\n\n Begin reduce)")
-    reduce(ata)
+    reduce(ata,max_iters,eps)
+ #   println("\nU^tU:"); printmat(transpose(ata.U)*ata.U)
+    N = transpose(C_orig)*C_orig
+    println("\nunreduced normal matrix (N):"); printmat(N)
+    println("\nEigenvalues (E:"); printmat(transpose(ata.C)*ata.C)
+    println("\nUNU^t (diagonalization of N).  Does it equal E?") ; printmat(transpose(ata.U)*N*ata.U)
+    println("\nAre the eigenvectors orthonormal?"); printmat(transpose(ata.U)*ata.U)
 end
 
 #------------------------------------------------------
