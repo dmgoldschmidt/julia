@@ -4,6 +4,7 @@ import GZip
 StreamType = Union{IOStream,Base.TTY,GZip.GZipStream}
 NumType = Union{Int64,Float64}
 StringType = Union{String,SubString{String}}
+VecType = Union{Matrix,Vector}
 
 struct my_round
   digits::Int64
@@ -12,10 +13,11 @@ function (r::my_round)(x::Float64)
   return round(x ; sigdigits=r.digits)
 end
 
-function printmat(M::Matrix{Float64}, ndigits = 5)
+function printmat(M::Matrix, ndigits = 5, s = "")
     rnd = my_round(ndigits)
     nrows = size(M)[1]
     ncols = size(M)[2]
+    println(s)
     for i in 1:nrows
         for j in 1:ncols
             print("$(rnd(M[i,j])) ")
@@ -23,6 +25,16 @@ function printmat(M::Matrix{Float64}, ndigits = 5)
         print("\n")
     end
 end
+
+function printmat(V::Vector, ndigits = 5, s = "")
+    rnd = my_round(ndigits)
+    println(s)
+    for i in 1:size(V)[1]
+        print("$(rnd(V[i])) ")
+    end
+    print("\n")
+end
+
 
 function is_dotted_quad(s::StringType)
   fields = split(s,".")

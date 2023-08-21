@@ -359,3 +359,13 @@ matrix of column rotations ("V" in the UAV notation) has the eigenvectors of C^t
 Thu Jul 27 17:15:10 2023
 OK, I've completed coding  reduce step 1 (rotate to upper bi-diagonal form) and it is working.  I've coded step 2
 (iterate to diagonal form) but no checkout yet.
+
+Sun Jul 30 12:56:57 2023
+reduce is now working and it checks out!  Amazing.  I've stripped out all the debugging prints and I'm committing
+it now.
+
+Mon Aug 21 16:28:51 2023
+I coded and checked out function QR(A::Matrix) and found a
+couple of bugs in AtA.jl (which might still be there, BTW).  I'm
+having a problem getting the mean and variance computations
+base on incremental QR (see function add_row) to agree with a) Welford, and b) naive calculation.  I'm in the middle of some debugging here.  I want to apply function QR to a matrix whose first column is all ones to get the mean and mean-centered covariance matrix ala qr_reg.pdf.  No luck yet.
