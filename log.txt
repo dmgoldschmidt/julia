@@ -369,3 +369,43 @@ I coded and checked out function QR(A::Matrix) and found a
 couple of bugs in AtA.jl (which might still be there, BTW).  I'm
 having a problem getting the mean and variance computations
 base on incremental QR (see function add_row) to agree with a) Welford, and b) naive calculation.  I'm in the middle of some debugging here.  I want to apply function QR to a matrix whose first column is all ones to get the mean and mean-centered covariance matrix ala qr_reg.pdf.  No luck yet.
+
+Mon Aug 28 13:44:50 2023
+The incremental QR method didn't work for the (mean-centered) covariance matrix.  So I'm going to use Welford for
+now.  Here's an outline of Cluster.jl:
+
+
+mutable struct Clusters
+  nclusters::Int64
+  welford::Array{Welford} # one Welford struct for each cluster
+  
+  function reset(....)
+end
+
+function update(c::Clusters, feature_vec::Array{Float64})
+  weight = [prob(welford[i],feature_vec) for i in 1:c.nclusters]
+  for i in 1:c.nclusters
+    update(c.welford[i],feature_vec,weight[i])
+  end
+end
+
+function finalize(c::Clusters)
+  cholesky = [QR(c.welford[i].covariance) for i in 1:c.nclusters]
+  inv_cholesky = [inv(cholesky) for i in 1:c.nclusters]
+  
+  
+while (feature_vec = get_feature_vec() != Nothing) #main loop
+
+
+
+
+2. Using the scores from 1) as weights, feed the feature vectors to each welford
+3. 
+
+Mon Sep  4 21:33:28 2023
+I coded up SVD.jl but it's not checked out yet.  I wrote a new version SVDcomp1 which I think
+is more efficient. (The old version SVDcomp was hard to code, so I gave up and recoded with SVDcomp1.
+The difference is the use of the "big matrix" X, which allows the row and column rotations to be automagically
+saved.
+NOTE:Due to quirks of Julia, A[rows,cols] .= B didn't seem to work yesterday.
+Hmm, just tried it again in the REPL and it works!  I wasted hours yesterday on this.  Bah!!!!

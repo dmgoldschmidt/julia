@@ -1,4 +1,3 @@
-#! /home/dmgoldschmidt/julia-1.5.3/bin/julia
 Model_loaded = true
 include("util.jl")
 using LinearAlgebra

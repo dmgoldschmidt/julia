@@ -64,7 +64,6 @@ function reduce(a::AtA, max_iters::Int64 = 10, eps::Float64 = 1.0e-8)
     for i in 1:d-2
         for j in d:-1:i+2
             reset(a.g,a.C[i,j-1],a.C[i,j]) # rotate cols j & j-1 to zero out C[i.j]
-
             a.C[i:d,j-1],a.C[i:d,j] =  rotate1(a.g,a.C[i:d,j-1],a.C[i:d,j]) 
             a.U[1:d,j-1],a.U[1:d,j] = rotate1(a.g,a.U[1:d,j-1],a.U[1:d,j])
             #NOTE: accumulate the column rotations in U
@@ -170,14 +169,20 @@ eigenvalues, vectors of A^tA
     ata::AtA = AtA()
     reset(ata,dim,eps,mc)
 #    reset(ata.g,1.0,2.0)
-    println("ata.dim = $(ata.dim), ata.eps= $(ata.eps), ata.g = $(ata.g)")
+    println("ata.dim = $(ata.dim), ata.eps= $(ata.eps), ata.g = $(ata.g), ata.mc = $(ata.mc)")
 #    t = atan(2.0)
 #    println("Check: $(sin(t)) = $(ata.g.sin_t),  $(cos(t)) = $(ata.g.cos_t)");
     Random.seed!(1234)
     println("begin add_row test\n C: $(ata.C)")
-    A = randn(2*dim,dim)
+    #    A = randn(2*dim,dim)
     nrows = 2*dim
     ncols = dim
+    A = zeros(nrows,ncols)
+    for i in 1:nrows
+        for j in 1:ncols
+            A[i,j] =  (i-1)*ncols + j-1
+        end
+    end
     welford = Welford(ncols-1)
     if mc == 1
         for i in 1:nrows
@@ -187,8 +192,9 @@ eigenvalues, vectors of A^tA
         
     printmat(A,3, "A:\n")
     ATA = transpose(A)*A;
-    printmat(ATA,3,"A^tA:\n")
     n = ATA[1,1]
+    printmat(ATA,5,"A^tA:\n")
+    
     printmat((1/n)*ATA,5,"A^tA/n")
     Q,R = QR(A)
     printmat(R,3,"R:\n")
@@ -199,9 +205,10 @@ eigenvalues, vectors of A^tA
     
     my_mean = zeros(dim-1)
     for i in 1:nrows
-        add_row(ata,A[i,:])
+        add_row(ata,A[i,1:dim])
         update(welford,A[i,2:dim]) #check the AtA mean & covariance
         my_mean += A[i,2:dim]
+        println("i: $i, my_mean: $my_mean")
     end
     my_mean /= nrows
     N = zeros(ata.dim,ata.dim)

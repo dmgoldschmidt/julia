@@ -71,144 +71,126 @@ end
 
 #function (c::CommandLine)(s::Array{String} = ARGS)
 function command_line(s::Array{String} = ARGS)
-  c = CommandLine([],[])
-  last_was_option::Bool = false
-  item_no = 0
-  if length(s) == 0; return c;end
-  for item in s
-    item_no += 1
-#    println("item no $item_no: ")
-    if item[1] == '-'
-      if length(item) == 1 || isnumber(item)
-        # special case: it's the value '-'  or a negative number
-        if !last_was_option #two values in a row
-          push!(c.option,"")
+    c = CommandLine([],[])
+    last_was_option::Bool = false
+    item_no = 0
+    if length(s) == 0; return c;end
+    println("begin command_line with s = $s")
+    for item in s
+        println("next item in s: $item")
+        item_no += 1
+        #    println("item no $item_no: ")
+        if item[1] == '-'
+            if length(item) == 1 || isnumber(item)
+                # special case: it's the value '-'  or a negative number
+                if !last_was_option #two values in a row
+                    push!(c.option,"")
+                end
+                push!(c.value,item)
+                last_was_option = false
+                continue
+            end
+            # general case:  it's an option
+            if last_was_option # more than one option in a row
+                #        println("two options in a row at item no ",item_no," = ",item)
+                push!(c.value,"") # previous option has no corresponding value
+            end
+            last_was_option = true
+            if item[2] == '-' # long style --option
+                x = findall("=",item) # NOTE: item[3:end] returns "" if length == 2 
+                if(length(x) > 0) # it's of the form --option=value
+                    i = x[1][1] # combined format option=value in one string
+                    #          println("i = $i")
+                    push!(c.option,item[3:i-1])
+                    push!(c.value,item[i+1:end])
+                    last_was_option = false
+                else # no value 
+                    push!(c.option,item[3:end])
+                    last_was_option = true
+                end
+            else # single letter option 
+                push!(c.option,string(item[2]))
+                if length(item) > 2 # value follows immediately with no intervening space
+                    push!(c.value,item[3:end])
+                    last_was_option = false
+                else
+                    #push!(c.value,"") #option only
+                    last_was_option = true
+                end
+            end
+        else #it's a value
+            #      println(item," is a value")
+            if !last_was_option
+                #        println("pushing blank option for item_no $item_no: $item")
+                push!(c.option,"") # two values in a row so this value has no option
+            end
+            last_was_option = false
+            if item == ""; println("pushing blank value at item_no ",item_no);end
+            push!(c.value,item)
         end
-        push!(c.value,item)
-        last_was_option = false
-        continue
-      end
-      # general case:  it's an option
-      if last_was_option # more than one option in a row
-#        println("two options in a row at item no ",item_no," = ",item)
-        push!(c.value,"") # previous option has no corresponding value
-      end
-      last_was_option = true
-      if item[2] == '-' # long style --option
-        x = findall("=",item) # NOTE: item[3:end] returns "" if length == 2 
-        if(length(x) > 0) # it's of the form --option=value
-          i = x[1][1] # combined format option=value in one string
-#          println("i = $i")
-          push!(c.option,item[3:i-1])
-          push!(c.value,item[i+1:end])
-          last_was_option = false
-        else # no value 
-          push!(c.option,item[3:end])
-          last_was_option = true
-        end
-      else # single letter option 
-        push!(c.option,string(item[2]))
-        if length(item) > 2 # value follows immediately with no intervening space
-          push!(c.value,item[3:end])
-          last_was_option = false
-        else
-          #push!(c.value,"") #option only
-          last_was_option = true
-        end
-      end
-    else #it's a value
-#      println(item," is a value")
-      if !last_was_option
-#        println("pushing blank option for item_no $item_no: $item")
-        push!(c.option,"") # two values in a row so this value has no option
-      end
-      last_was_option = false
-      if item == ""; println("pushing blank value at item_no ",item_no);end
-      push!(c.value,item)
     end
-  end
-  if last_was_option # last item was an option with no value
-    push!(c.value,"")
-  end
-  return c
+    if last_was_option # last item was an option with no value
+        push!(c.value,"")
+    end
+    return c
 end
 
-# StringType = Union{String,SubString{String}}
-# function get_vals(defaults::Dict{String,Any}, s::Array = ARGS, c::CommandLine=CommandLine([],[]))
-#   if length(c.option) == 0 && length(c.value) == 0
-#     c = command_line(s)
-#   end
-#   for option in keys(defaults)
-#     i = 0
-#     best_match = Int64[0,0]
-#     for opt in c.option
-#       i += 1
-#       m = match(Regex("^"*opt),option) # is opt a prefix of option? 
-#       if m != nothing
-#         if length(m.match) > best_match[1] #this is the longest match so far
-#           println("matched $opt with $option, length $(length(m.match))")
-#           best_match[1] = length(m.match)
-#           best_match[2] = i 
-#         end
-#       end
-#     end
-#     if best_match[1] != 0
-# #      println("returning $(c.value[best_match[2]])")
-# #      println("parsing for type $(typeof(defaults[option]))")
-#       if typeof(defaults[option]) == String
-#         defaults[option] = c.value[best_match[2]]
-#       elseif typeof(defaults[option]) == Bool
-#         defaults[option] = true
-#       else
-#         defaults[option] = tryparse(typeof(defaults[option]),c.value[best_match[2]])
-#         # NOTE: value = nothing if we find a match to option but can't parse the string 
-#       end
-#     end
-#   end
-#   return c
-# end
 function get_vals(defaults::Dict{String,Any}, s::Array = ARGS, c::CommandLine=CommandLine([],[]))
-  if length(c.option) == 0 && length(c.value) == 0
-    c = command_line(s)
-  end
-  for key in keys(defaults)
-    i = 0
-    best_match = Int64[0,0]
-    for opt in c.option
-      i += 1
-      m = match(Regex("^"*opt),key) # is opt a prefix of key? 
-      if m != nothing
-        if length(m.match) > best_match[1] #this is the longest match so far
-          println("matched $opt with $key, length $(length(m.match))")
-          best_match[1] = length(m.match)
-          best_match[2] = i 
-        end
-      end
+    if length(c.option) == 0 && length(c.value) == 0
+         c = command_line(s)
     end
-    if best_match[1] != 0
-      println("match of length $(best_match[1]) for key $key")
-      println("parsing for type $(typeof(defaults[key]))")
-      if typeof(defaults[key]) == String
-        defaults[key] = c.value[best_match[2]]
-      elseif typeof(defaults[key]) == Bool
-        defaults[key] = true
-      elseif typeof(defaults[key]) <: Array
-        j = best_match[2]
-        println("defaults[$key] at $j: ",defaults[key])
-        while true # load successive optionless values into the Array
-          push!(defaults[key], myparse(eltype(defaults[key]),c.value[j]))
-          j += 1
-          println("testing option[$j]")
-          if j > length(c.option) || c.option[j] != ""; break;end  # if the next option isn't blank, we're done
-        end
-        println("defaults[$key]: ",defaults[key])
-      else
-        defaults[key] = tryparse(typeof(defaults[key]),c.value[best_match[2]])
-        # NOTE: value = nothing if we find a match to option but can't parse the string 
-      end
-    end
-  end
-  return c
+    println("begin get_vals with c.option = $(c.option), c.value = $(c.value)")
+    println("keys(defaults) = $(keys(defaults))")
+    key::String = ""
+    for key in keys(defaults)
+        println("\nIs there a match for key $key?")
+        opt::String = ""
+        i = 0
+        best_match = Int64[0,0]
+        for opt in c.option
+            println("trying to match $opt with $key")
+            i += 1
+            m = match(Regex("^"*opt),key) # is opt a prefix of key? 
+            if m == nothing
+                println(" $opt is not a prefix of $key")
+                continue
+            else 
+                if length(m.match) > best_match[1] #this is the longest match so far
+                    best_match[1] = length(m.match)
+                    best_match[2] = i 
+                end #if length ..
+            end #if m == nothing
+            println("best match for option $opt  is with $key.")
+        end # for opt
+        if best_match[2] == 0
+            println("No match was found for key $key.\n")
+            continue; 
+        else #we got a match
+            value = c.value[best_match[2]]
+            println("best match for key $key is with option $opt\n")
+            println("parsing $key for type $(typeof(defaults[key]))")
+            if typeof(defaults[key]) == String
+                defaults[key] = c.value[best_match[2]]
+            elseif typeof(defaults[key]) == Bool
+                defaults[key] = true
+            elseif typeof(defaults[key]) <: Array
+                j = best_match[2]
+                println("defaults[$key] at $j: ",defaults[key])
+                while true # load successive optionless values into the Array
+                    push!(defaults[key], myparse(eltype(defaults[key]),c.value[j]))
+                    j += 1
+                    println("testing option[$j]")
+                    if j > length(c.option) || c.option[j] != ""; break;end  # if the next option isn't blank, we're done
+                end #while true
+                println("defaults[$key]: ",defaults[key]) #print the given Array values
+            else
+                println("trying to parse $value as type $(typeof(defaults[key]))")
+                defaults[key] = tryparse(typeof(defaults[key]),value)
+                # NOTE: value = nothing if we find a match to option but can't parse the string 
+            end #else
+        end #if best_match[1] != 0
+    end # for key in keys(defaults)
+    return c
 end
 
 
